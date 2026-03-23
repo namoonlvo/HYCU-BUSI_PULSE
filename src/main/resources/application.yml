@@ -4,10 +4,22 @@ server:
 spring:
   application:
     name: hycu-busi-pulse
+  profiles:
+    include: secret
   thymeleaf:
-    cache: false # Disable cache for development
+    cache: false
     prefix: classpath:/templates/
     suffix: .html
   web:
     resources:
       static-locations: classpath:/static/
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
