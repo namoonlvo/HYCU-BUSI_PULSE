@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 사용자 관리</title>
+  <style>
+    .status-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;border-width:1px;}
+    .filter-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #e5e7eb;}
+    .filter-chip.active{background:#5038A6;color:#fff;border-color:#5038A6;}
+    .filter-chip:not(.active){background:#fff;color:#6b7280;}
+    .filter-chip:not(.active):hover{border-color:#5038A6;color:#5038A6;}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h1 class="text-xl font-bold text-gray-800">사용자 관리</h1><p class="text-sm text-gray-500 mt-0.5">시스템 사용자 계정을 등록하고 권한을 관리하세요.</p></div>
+        <button onclick="openModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;"><i class="fa-solid fa-user-plus text-xs"></i> 사용자 추가</button>
+      </div>
+
+      <!-- 요약 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3"><div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:rgba(80,56,166,.1);"><i class="fa-solid fa-users text-sm" style="color:#5038A6;"></i></div><div><p class="text-xl font-bold text-gray-800" id="cntAll">0</p><p class="text-xs text-gray-500">전체 사용자</p></div></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center"><i class="fa-solid fa-circle-check text-sm text-emerald-500"></i></div><div><p class="text-xl font-bold text-gray-800" id="cntActive">0</p><p class="text-xs text-gray-500">활성</p></div></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center"><i class="fa-solid fa-ban text-sm text-red-500"></i></div><div><p class="text-xl font-bold text-gray-800" id="cntInactive">0</p><p class="text-xs text-gray-500">비활성</p></div></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center"><i class="fa-solid fa-shield text-sm text-amber-500"></i></div><div><p class="text-xl font-bold text-gray-800" id="cntAdmin">0</p><p class="text-xs text-gray-500">관리자</p></div></div>
+      </div>
+
+      <!-- 필터 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[160px] max-w-xs"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="searchInput" placeholder="이름 또는 이메일 검색..." oninput="render()" class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+        <select id="deptFilter" onchange="render()" class="px-3 py-2 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="">부서 전체</option><option>IT기획팀</option><option>모바일팀</option><option>데이터팀</option><option>인프라팀</option><option>HR팀</option><option>보안팀</option></select>
+        <div class="flex gap-1.5">
+          <button class="filter-chip active" data-val="all" onclick="setFilter('all',this)">전체</button>
+          <button class="filter-chip" data-val="활성" onclick="setFilter('활성',this)">활성</button>
+          <button class="filter-chip" data-val="비활성" onclick="setFilter('비활성',this)">비활성</button>
+        </div>
+        <span class="ml-auto text-xs text-gray-400" id="rowCount"></span>
+      </div>
+
+      <!-- 테이블 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">사용자</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-24">부서</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-16">직위</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">역할</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">상태</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28">최근 로그인</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-24">가입일</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-20">액션</th>
+          </tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+        <div id="listEmpty" class="hidden py-14 text-center"><i class="fa-solid fa-user-slash text-gray-300 text-3xl block mb-2"></i><p class="text-sm text-gray-400">사용자가 없습니다</p></div>
+      </div>
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 모달 -->
+  <div id="userModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="modalTitle">사용자 추가</h2>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div class="flex items-center gap-4 pb-4 border-b border-gray-100">
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0" id="avatarPreview" style="background:#5038A6;">?</div>
+          <div class="flex-1">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">이름 <span class="text-red-400">*</span></label>
+            <input type="text" id="uName" oninput="updateAvatar()" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition">
+          </div>
+        </div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">이메일 <span class="text-red-400">*</span></label><input type="email" id="uEmail" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">부서</label><select id="uDept" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option>IT기획팀</option><option>모바일팀</option><option>데이터팀</option><option>인프라팀</option><option>HR팀</option><option>보안팀</option></select></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">직위</label><select id="uPosition" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option>사원</option><option>주임</option><option>선임</option><option>팀장</option><option>인턴</option></select></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">역할</label><select id="uRole" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="일반">일반 사용자</option><option value="PM">PM</option><option value="관리자">관리자</option></select></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">상태</label><select id="uStatus" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="활성">활성</option><option value="비활성">비활성</option></select></div>
+        </div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">전화번호</label><input type="text" id="uPhone" placeholder="010-0000-0000" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white">
+        <button id="deleteBtn" onclick="deleteUser()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-regular fa-trash-can"></i> 삭제</button>
+        <div class="flex gap-2 ml-auto"><button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button><button onclick="saveUser()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;"><i class="fa-solid fa-floppy-disk text-xs"></i> 저장</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    let users=[
+      {id:1, name:'김철수', email:'kim@busipulse.com',   dept:'IT기획팀', position:'팀장', role:'관리자', status:'활성', phone:'010-1234-5678', lastLogin:'2026-03-25', joinDate:'2023-01-02'},
+      {id:2, name:'이영희', email:'lee@busipulse.com',   dept:'모바일팀', position:'선임', role:'PM',    status:'활성', phone:'010-2345-6789', lastLogin:'2026-03-25', joinDate:'2023-03-15'},
+      {id:3, name:'박민준', email:'park@busipulse.com',  dept:'데이터팀', position:'주임', role:'PM',    status:'활성', phone:'010-3456-7890', lastLogin:'2026-03-24', joinDate:'2023-06-01'},
+      {id:4, name:'최수연', email:'choi@busipulse.com',  dept:'인프라팀', position:'사원', role:'일반',  status:'활성', phone:'010-4567-8901', lastLogin:'2026-03-25', joinDate:'2024-01-08'},
+      {id:5, name:'정하늘', email:'jung@busipulse.com',  dept:'IT기획팀', position:'사원', role:'일반',  status:'활성', phone:'010-5678-9012', lastLogin:'2026-03-23', joinDate:'2024-03-04'},
+      {id:6, name:'나현재', email:'na@busipulse.com',    dept:'모바일팀', position:'인턴', role:'일반',  status:'활성', phone:'010-6789-0123', lastLogin:'2026-03-22', joinDate:'2025-07-01'},
+      {id:7, name:'오지민', email:'oh@busipulse.com',    dept:'HR팀',    position:'선임', role:'일반',  status:'비활성',phone:'010-7890-1234', lastLogin:'2026-02-10', joinDate:'2022-08-15'},
+    ];
+    let nextId=8, editId=null, currentFilter='all';
+    const roleCfg={'관리자':'text-amber-700 bg-amber-50 border-amber-200','PM':'text-purple-700 bg-purple-50 border-purple-200','일반':'text-gray-600 bg-gray-100 border-gray-200'};
+    const avatarColors=['#5038A6','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+
+    function getFiltered(){
+      const s=document.getElementById('searchInput').value.toLowerCase();
+      const dept=document.getElementById('deptFilter').value;
+      return users.filter(u=>{
+        if(currentFilter!=='all'&&u.status!==currentFilter)return false;
+        if(s&&!u.name.toLowerCase().includes(s)&&!u.email.toLowerCase().includes(s))return false;
+        if(dept&&u.dept!==dept)return false;
+        return true;
+      }).sort((a,b)=>a.name.localeCompare(b.name));
+    }
+    function updateCounts(){
+      document.getElementById('cntAll').textContent=users.length;
+      document.getElementById('cntActive').textContent=users.filter(u=>u.status==='활성').length;
+      document.getElementById('cntInactive').textContent=users.filter(u=>u.status==='비활성').length;
+      document.getElementById('cntAdmin').textContent=users.filter(u=>u.role==='관리자').length;
+    }
+    function render(){
+      updateCounts();
+      const filtered=getFiltered();
+      document.getElementById('rowCount').textContent=`총 ${filtered.length}명`;
+      const tbody=document.getElementById('listBody'),empty=document.getElementById('listEmpty');
+      if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return;}
+      empty.classList.add('hidden');
+      tbody.innerHTML=filtered.map((u,i)=>{
+        const rc=roleCfg[u.role]||roleCfg['일반'];
+        const isActive=u.status==='활성';
+        return`<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background:${avatarColors[i%7]};">${u.name[0]}</div>
+              <div><p class="font-medium text-gray-800 text-sm">${u.name}</p><p class="text-xs text-gray-400">${u.email}</p></div>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-xs text-gray-600">${u.dept}</td>
+          <td class="px-4 py-3 text-xs text-gray-600">${u.position}</td>
+          <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${rc}">${u.role}</span></td>
+          <td class="px-4 py-3">
+            <span class="status-badge ${isActive?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-gray-50 text-gray-400 border-gray-200'}">
+              <span class="w-1.5 h-1.5 rounded-full ${isActive?'bg-emerald-400':'bg-gray-300'}"></span>${u.status}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-gray-500">${u.lastLogin}</td>
+          <td class="px-4 py-3 text-xs text-gray-500">${u.joinDate}</td>
+          <td class="px-4 py-3 text-center">
+            <div class="flex items-center justify-center gap-1">
+              <button onclick="openModal('edit',${u.id})" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i></button>
+              <button onclick="toggleStatus(${u.id})" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-${isActive?'red':'emerald'}-50 text-gray-400 hover:text-${isActive?'red-500':'emerald-500'} transition" title="${isActive?'비활성화':'활성화'}"><i class="fa-solid fa-${isActive?'ban':'circle-check'} text-xs"></i></button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+    function toggleStatus(id){const u=users.find(x=>x.id===id);if(u)u.status=u.status==='활성'?'비활성':'활성';render();}
+    function setFilter(val,el){currentFilter=val;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));el.classList.add('active');render();}
+    function updateAvatar(){const n=document.getElementById('uName').value;document.getElementById('avatarPreview').textContent=n?n[0]:'?';}
+    function openModal(mode,id=null){
+      editId=(mode==='edit')?id:null;
+      document.getElementById('modalTitle').textContent=mode==='create'?'사용자 추가':'사용자 수정';
+      document.getElementById('deleteBtn').classList.toggle('hidden',mode==='create');
+      document.getElementById('userModal').classList.remove('hidden');
+      if(mode==='create'){
+        ['uName','uEmail','uPhone'].forEach(i=>document.getElementById(i).value='');
+        document.getElementById('uDept').value='IT기획팀';document.getElementById('uPosition').value='사원';document.getElementById('uRole').value='일반';document.getElementById('uStatus').value='활성';
+        document.getElementById('avatarPreview').textContent='?';
+      }else{
+        const u=users.find(x=>x.id===id);if(!u)return;
+        document.getElementById('uName').value=u.name;document.getElementById('uEmail').value=u.email;
+        document.getElementById('uDept').value=u.dept;document.getElementById('uPosition').value=u.position;
+        document.getElementById('uRole').value=u.role;document.getElementById('uStatus').value=u.status;
+        document.getElementById('uPhone').value=u.phone;
+        document.getElementById('avatarPreview').textContent=u.name[0];
+      }
+    }
+    function closeModal(){document.getElementById('userModal').classList.add('hidden');editId=null;}
+    function saveUser(){
+      const name=document.getElementById('uName').value.trim(),email=document.getElementById('uEmail').value.trim();
+      if(!name||!email){alert('이름과 이메일은 필수입니다.');return;}
+      const data={name,email,dept:document.getElementById('uDept').value,position:document.getElementById('uPosition').value,role:document.getElementById('uRole').value,status:document.getElementById('uStatus').value,phone:document.getElementById('uPhone').value};
+      if(editId){const i=users.findIndex(u=>u.id===editId);if(i>-1)users[i]={...users[i],...data};}
+      else users.push({id:nextId++,...data,lastLogin:'—',joinDate:new Date().toISOString().slice(0,10)});
+      closeModal();render();
+    }
+    function deleteUser(){if(!confirm('삭제하시겠습니까?'))return;users=users.filter(u=>u.id!==editId);closeModal();render();}
+    render();
+  </script>
+</body>
+</html>

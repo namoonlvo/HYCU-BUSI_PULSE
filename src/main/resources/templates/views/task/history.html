@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 업무 이력</title>
+  <style>
+    .status-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;border-width:1px;}
+    .filter-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #e5e7eb;}
+    .filter-chip.active{background:#5038A6;color:#fff;border-color:#5038A6;}
+    .filter-chip:not(.active){background:#fff;color:#6b7280;}
+    .filter-chip:not(.active):hover{border-color:#5038A6;color:#5038A6;}
+    .timeline-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+    .timeline-line{width:2px;background:#e5e7eb;flex-shrink:0;}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h1 class="text-xl font-bold text-gray-800">업무 이력</h1><p class="text-sm text-gray-500 mt-0.5">완료된 업무 및 변경 이력을 조회하세요.</p></div>
+      </div>
+
+      <!-- 통계 카드 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 mb-1">이번 달 완료</p><p class="text-2xl font-bold text-emerald-600" id="statMonth">0</p><p class="text-xs text-gray-400 mt-0.5">건</p></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 mb-1">전체 완료</p><p class="text-2xl font-bold text-gray-800" id="statTotal">0</p><p class="text-xs text-gray-400 mt-0.5">건</p></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 mb-1">평균 소요일</p><p class="text-2xl font-bold" style="color:#5038A6;" id="statAvg">0</p><p class="text-xs text-gray-400 mt-0.5">일</p></div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 mb-1">지연 완료</p><p class="text-2xl font-bold text-red-500" id="statLate">0</p><p class="text-xs text-gray-400 mt-0.5">건</p></div>
+      </div>
+
+      <!-- 필터 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[160px] max-w-xs"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="searchInput" placeholder="업무명 검색..." oninput="render()" class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+        <div class="flex items-center gap-2 text-sm">
+          <i class="fa-regular fa-calendar text-gray-400 text-xs"></i>
+          <input type="date" id="dateFrom" onchange="render()" class="px-2 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          <span class="text-gray-400 text-xs">~</span>
+          <input type="date" id="dateTo" onchange="render()" class="px-2 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+        </div>
+        <select id="projFilter" onchange="render()" class="px-3 py-2 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          <option value="">프로젝트 전체</option><option>ERP 고도화 프로젝트</option><option>모바일 앱 리뉴얼</option><option>데이터 분석 플랫폼</option><option>인프라 클라우드 전환</option>
+        </select>
+        <div class="flex gap-1.5">
+          <button class="filter-chip active" data-val="all" onclick="setFilter('all',this)">전체</button>
+          <button class="filter-chip" data-val="완료" onclick="setFilter('완료',this)">완료</button>
+          <button class="filter-chip" data-val="지연완료" onclick="setFilter('지연완료',this)">지연 완료</button>
+          <button class="filter-chip" data-val="취소" onclick="setFilter('취소',this)">취소</button>
+        </div>
+        <button onclick="toggleView()" id="viewToggleBtn" class="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-500 hover:border-purple-300 hover:text-purple-600 transition"><i class="fa-solid fa-timeline text-xs"></i> 타임라인</button>
+        <span class="text-xs text-gray-400" id="rowCount"></span>
+      </div>
+
+      <!-- 테이블 뷰 -->
+      <div id="tableView" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">업무명</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28">프로젝트</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">상태</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-24">시작일</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-24">완료일</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-16">소요일</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">우선순위</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">비고</th>
+          </tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+        <div id="listEmpty" class="hidden py-14 text-center"><i class="fa-solid fa-clock-rotate-left text-gray-300 text-3xl block mb-2"></i><p class="text-sm text-gray-400">이력이 없습니다</p></div>
+      </div>
+
+      <!-- 타임라인 뷰 -->
+      <div id="timelineView" class="hidden space-y-0"></div>
+
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    const historyData=[
+      {id:1, name:'ERP 요구사항 분석',          project:'ERP 고도화 프로젝트', status:'완료',    start:'2026-01-06',end:'2026-01-31',days:25,priority:'높음',note:''},
+      {id:2, name:'DB 설계',                     project:'ERP 고도화 프로젝트', status:'완료',    start:'2026-02-01',end:'2026-02-14',days:14,priority:'높음',note:''},
+      {id:3, name:'UI/UX 프로토타입 검토',       project:'모바일 앱 리뉴얼',    status:'완료',    start:'2026-02-10',end:'2026-02-20',days:10,priority:'보통',note:''},
+      {id:4, name:'클라우드 현황 분석',          project:'인프라 클라우드 전환',status:'완료',    start:'2026-01-15',end:'2026-02-15',days:31,priority:'높음',note:''},
+      {id:5, name:'보안 취약점 점검',            project:'인프라 클라우드 전환',status:'완료',    start:'2026-03-14',end:'2026-03-20',days:6, priority:'높음',note:'결과 보고서 제출'},
+      {id:6, name:'API 명세서 작성',             project:'ERP 고도화 프로젝트', status:'완료',    start:'2026-02-15',end:'2026-02-28',days:13,priority:'보통',note:''},
+      {id:7, name:'스프린트 1 회의 준비',        project:'모바일 앱 리뉴얼',    status:'완료',    start:'2026-03-05',end:'2026-03-07',days:2, priority:'낮음',note:''},
+      {id:8, name:'인프라 아키텍처 설계',        project:'인프라 클라우드 전환',status:'지연완료',start:'2026-02-01',end:'2026-03-10',days:37,priority:'높음',note:'설계 변경으로 2주 지연'},
+      {id:9, name:'사내 교육 플랫폼 QA',        project:'',                    status:'취소',    start:'2026-01-20',end:'2026-02-10',days:21,priority:'낮음',note:'프로젝트 중단'},
+      {id:10,name:'데이터 수집 모듈 PoC',       project:'데이터 분석 플랫폼',  status:'완료',    start:'2026-02-15',end:'2026-03-15',days:28,priority:'높음',note:''},
+    ];
+    let currentFilter='all',isTimeline=false;
+    const scfg={
+      '완료'   :{text:'text-emerald-700',bg:'bg-emerald-50',border:'border-emerald-200',dot:'bg-emerald-400',tcolor:'#10b981'},
+      '지연완료':{text:'text-amber-700', bg:'bg-amber-50', border:'border-amber-200', dot:'bg-amber-400',  tcolor:'#f59e0b'},
+      '취소'   :{text:'text-gray-400',   bg:'bg-gray-50',  border:'border-gray-200',  dot:'bg-gray-300',   tcolor:'#d1d5db'},
+    };
+    const pcText={'높음':'text-red-500','보통':'text-amber-500','낮음':'text-gray-400'};
+
+    function getFiltered(){
+      const s=document.getElementById('searchInput').value.toLowerCase();
+      const proj=document.getElementById('projFilter').value;
+      const from=document.getElementById('dateFrom').value;
+      const to=document.getElementById('dateTo').value;
+      return historyData.filter(h=>{
+        if(currentFilter!=='all'&&h.status!==currentFilter)return false;
+        if(s&&!h.name.toLowerCase().includes(s))return false;
+        if(proj&&h.project!==proj)return false;
+        if(from&&h.end<from)return false;
+        if(to&&h.start>to)return false;
+        return true;
+      }).sort((a,b)=>b.end.localeCompare(a.end));
+    }
+
+    function updateStats(){
+      const thisMonth=new Date().toISOString().slice(0,7);
+      const done=historyData.filter(h=>h.status==='완료'||h.status==='지연완료');
+      document.getElementById('statMonth').textContent=done.filter(h=>h.end.startsWith(thisMonth)).length;
+      document.getElementById('statTotal').textContent=done.length;
+      const avg=done.length?Math.round(done.reduce((s,h)=>s+h.days,0)/done.length):0;
+      document.getElementById('statAvg').textContent=avg;
+      document.getElementById('statLate').textContent=historyData.filter(h=>h.status==='지연완료').length;
+    }
+
+    function render(){
+      updateStats();
+      const filtered=getFiltered();
+      document.getElementById('rowCount').textContent=`총 ${filtered.length}건`;
+      if(isTimeline)renderTimeline(filtered);else renderTable(filtered);
+    }
+
+    function renderTable(filtered){
+      const tbody=document.getElementById('listBody'),empty=document.getElementById('listEmpty');
+      if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return;}
+      empty.classList.add('hidden');
+      tbody.innerHTML=filtered.map(h=>{
+        const sc=scfg[h.status]||scfg['완료'];
+        return`<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <td class="px-4 py-3"><p class="font-medium text-gray-800 text-sm">${h.name}</p></td>
+          <td class="px-4 py-3 text-xs text-gray-500"><span class="truncate block max-w-[100px]">${h.project||'—'}</span></td>
+          <td class="px-4 py-3"><span class="status-badge ${sc.bg} ${sc.text} ${sc.border}"><span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${h.status}</span></td>
+          <td class="px-4 py-3 text-xs text-gray-500">${h.start}</td>
+          <td class="px-4 py-3 text-xs text-gray-600 font-medium">${h.end}</td>
+          <td class="px-4 py-3 text-xs font-bold" style="color:#5038A6;">${h.days}일</td>
+          <td class="px-4 py-3 text-xs font-semibold ${pcText[h.priority]}">${h.priority}</td>
+          <td class="px-4 py-3 text-xs text-gray-400">${h.note||'—'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderTimeline(filtered){
+      const tl=document.getElementById('timelineView');
+      // 월별 그룹
+      const groups={};
+      filtered.forEach(h=>{
+        const m=h.end.slice(0,7);
+        if(!groups[m])groups[m]=[];
+        groups[m].push(h);
+      });
+      tl.innerHTML=Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(m=>{
+        const [y,mo]=m.split('-');
+        return`<div class="mb-6"><p class="text-xs font-bold text-gray-500 mb-3 px-1">${y}년 ${parseInt(mo)}월</p>
+        ${groups[m].map((h,i,arr)=>{
+          const sc=scfg[h.status]||scfg['완료'];
+          return`<div class="flex gap-4 mb-0">
+            <div class="flex flex-col items-center">
+              <div class="timeline-dot" style="background:${sc.tcolor};"></div>
+              ${i<arr.length-1?`<div class="timeline-line flex-1 my-1"></div>`:'<div class="h-4"></div>'}
+            </div>
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3 mb-2 flex-1 hover:border-purple-200 transition">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-semibold text-gray-800">${h.name}</p>
+                <span class="status-badge ${sc.bg} ${sc.text} ${sc.border} flex-shrink-0"><span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${h.status}</span>
+              </div>
+              <div class="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
+                <span>${h.project||'개인 업무'}</span>
+                <span>·</span><span>${h.start} ~ ${h.end}</span>
+                <span>·</span><span class="font-semibold" style="color:#5038A6;">${h.days}일 소요</span>
+                ${h.note?`<span>·</span><span>${h.note}</span>`:''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+        </div>`;
+      }).join('');
+    }
+
+    function setFilter(val,el){currentFilter=val;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));el.classList.add('active');render();}
+    function toggleView(){
+      isTimeline=!isTimeline;
+      document.getElementById('tableView').classList.toggle('hidden',isTimeline);
+      document.getElementById('timelineView').classList.toggle('hidden',!isTimeline);
+      const btn=document.getElementById('viewToggleBtn');
+      btn.style.background=isTimeline?'rgba(80,56,166,.08)':'';
+      btn.style.borderColor=isTimeline?'#5038A6':'';
+      btn.style.color=isTimeline?'#5038A6':'';
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

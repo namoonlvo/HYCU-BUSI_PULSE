@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | WBS 관리</title>
+  <style>
+    .status-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:500; border-width:1px; }
+    .progress-bar { height:5px; border-radius:3px; background:#e5e7eb; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
+    .wbs-row { transition:background 0.1s; }
+    .wbs-row:hover { background:rgba(80,56,166,0.03); }
+    .wbs-row.level-0 { font-weight:700; background:rgba(80,56,166,0.04); }
+    .wbs-row.level-1 { background:#fff; }
+    .wbs-row.level-2 { background:rgba(249,250,251,0.8); }
+    .indent-0 { padding-left:12px; }
+    .indent-1 { padding-left:32px; }
+    .indent-2 { padding-left:52px; }
+    .gantt-cell { width:28px; min-width:28px; }
+    .gantt-bar { height:14px; border-radius:3px; }
+    .gantt-today { background:rgba(239,68,68,0.15); }
+    .collapse-btn { transition:transform 0.2s; }
+    .collapsed .collapse-btn { transform:rotate(-90deg); }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+
+    <main class="flex-1 p-6 space-y-5">
+
+      <!-- Title -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-gray-800">WBS 관리</h1>
+          <p class="text-sm text-gray-500 mt-0.5">프로젝트별 업무 분류 구조를 관리하고 진척을 추적하세요.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="expandAll()" class="flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 transition">
+            <i class="fa-solid fa-angles-down text-xs"></i> 전체 펼치기
+          </button>
+          <button onclick="openTaskModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;">
+            <i class="fa-solid fa-plus text-xs"></i> 업무 추가
+          </button>
+        </div>
+      </div>
+
+      <!-- 프로젝트 선택 + 요약 -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- 프로젝트 선택 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <p class="text-xs font-semibold text-gray-500 mb-2">프로젝트 선택</p>
+          <div class="space-y-1" id="projectList"></div>
+        </div>
+        <!-- 요약 카드 3개 -->
+        <div class="lg:col-span-3 grid grid-cols-3 gap-4">
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 mb-1">전체 업무</p>
+            <p class="text-2xl font-bold text-gray-800" id="sumTotal">0</p>
+            <div class="progress-bar mt-2"><div class="progress-bar-fill" id="sumBar" style="background:#5038A6;"></div></div>
+            <p class="text-xs text-gray-400 mt-1" id="sumPct">0% 완료</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 mb-1">완료 / 진행 / 지연</p>
+            <div class="flex items-end gap-2 mt-1">
+              <span class="text-xl font-bold text-emerald-600" id="sumDone">0</span>
+              <span class="text-gray-300">/</span>
+              <span class="text-xl font-bold text-blue-600" id="sumActive">0</span>
+              <span class="text-gray-300">/</span>
+              <span class="text-xl font-bold text-red-500" id="sumDelay">0</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">업무 건수</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 mb-1">프로젝트 마감</p>
+            <p class="text-base font-bold text-gray-800" id="sumDeadline">—</p>
+            <p class="text-xl font-bold mt-1" id="sumDaysLeft" style="color:#5038A6;">—</p>
+            <p class="text-xs text-gray-400">잔여 일수</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- WBS 테이블 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <!-- 테이블 헤더 툴바 -->
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+          <span class="text-sm font-bold text-gray-700" id="wbsProjectName">—</span>
+          <div class="relative ml-auto max-w-xs">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <input type="text" id="wbsSearch" placeholder="업무명 검색..." oninput="renderWbs()"
+              class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 w-44">
+          </div>
+          <select id="wbsStatusFilter" onchange="renderWbs()" class="px-2 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+            <option value="">상태 전체</option>
+            <option value="완료">완료</option>
+            <option value="진행중">진행중</option>
+            <option value="지연">지연</option>
+            <option value="예정">예정</option>
+          </select>
+          <button onclick="toggleGantt()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:border-purple-300 text-gray-500 hover:text-purple-600 transition" id="ganttToggleBtn">
+            <i class="fa-solid fa-chart-gantt text-xs"></i> 간트 표시
+          </button>
+        </div>
+
+        <!-- 컬럼 헤더 -->
+        <div class="grid border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500" id="wbsHeader" style="grid-template-columns: 1fr 90px 110px 110px 70px 100px 80px 60px;"></div>
+
+        <!-- WBS 바디 -->
+        <div id="wbsBody" class="divide-y divide-gray-50"></div>
+
+        <div id="wbsEmpty" class="hidden py-16 text-center">
+          <i class="fa-solid fa-list-check text-gray-300 text-3xl block mb-3"></i>
+          <p class="text-sm text-gray-400">업무 항목이 없습니다</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 업무 등록/수정 모달 -->
+  <div id="taskModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeTaskModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="taskModalTitle">업무 추가</h2>
+        <button onclick="closeTaskModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <!-- 업무명 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">업무명 <span class="text-red-400">*</span></label>
+          <input type="text" id="tName" placeholder="업무명을 입력하세요"
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition">
+        </div>
+        <!-- 상위 업무 + 레벨 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">상위 업무</label>
+            <select id="tParent" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="">없음 (최상위)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">담당자 <span class="text-red-400">*</span></label>
+            <select id="tAssignee" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="김철수">김철수</option>
+              <option value="이영희">이영희</option>
+              <option value="박민준">박민준</option>
+              <option value="최수연">최수연</option>
+              <option value="정하늘">정하늘</option>
+              <option value="나현재">나현재</option>
+            </select>
+          </div>
+        </div>
+        <!-- 상태 + 우선순위 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">상태 <span class="text-red-400">*</span></label>
+            <select id="tStatus" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="예정">예정</option>
+              <option value="진행중">진행중</option>
+              <option value="완료">완료</option>
+              <option value="지연">지연</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">우선순위</label>
+            <select id="tPriority" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="높음">높음</option>
+              <option value="보통" selected>보통</option>
+              <option value="낮음">낮음</option>
+            </select>
+          </div>
+        </div>
+        <!-- 기간 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">시작일</label>
+            <input type="date" id="tStart" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">종료 예정일</label>
+            <input type="date" id="tEnd" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+        </div>
+        <!-- 진척도 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">진척도 (%)</label>
+          <div class="flex items-center gap-3">
+            <input type="range" id="tProgress" min="0" max="100" value="0"
+              oninput="document.getElementById('tProgressVal').textContent=this.value+'%'"
+              class="flex-1" style="accent-color:#5038A6;">
+            <span class="text-sm font-bold text-purple-600 w-10 text-right" id="tProgressVal">0%</span>
+          </div>
+        </div>
+        <!-- 메모 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">메모</label>
+          <textarea id="tMemo" rows="2" placeholder="업무 메모..."
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none transition"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white">
+        <button id="tDeleteBtn" onclick="deleteTask()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition">
+          <i class="fa-regular fa-trash-can"></i> 삭제
+        </button>
+        <div class="flex gap-2 ml-auto">
+          <button onclick="closeTaskModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
+          <button onclick="saveTask()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;">
+            <i class="fa-solid fa-floppy-disk text-xs"></i> 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    // ── 프로젝트 데이터 ──
+    const projectsMeta = [
+      { id:1, name:'ERP 고도화 프로젝트',    end:'2026-06-30' },
+      { id:2, name:'모바일 앱 리뉴얼',        end:'2026-05-31' },
+      { id:3, name:'데이터 분석 플랫폼',      end:'2026-08-15' },
+      { id:4, name:'인프라 클라우드 전환',    end:'2026-04-30' },
+    ];
+
+    // ── WBS 데이터 (트리 구조: parentId null = 최상위) ──
+    let tasks = {
+      1: [
+        { id:101, parentId:null, name:'요구사항 분석',        assignee:'김철수', status:'완료',   priority:'높음', start:'2026-01-06', end:'2026-01-31', progress:100, memo:'' },
+        { id:102, parentId:null, name:'설계',                  assignee:'이영희', status:'완료',   priority:'높음', start:'2026-02-01', end:'2026-02-28', progress:100, memo:'' },
+        { id:103, parentId:102,  name:'DB 설계',               assignee:'이영희', status:'완료',   priority:'높음', start:'2026-02-01', end:'2026-02-14', progress:100, memo:'' },
+        { id:104, parentId:102,  name:'API 설계',              assignee:'박민준', status:'완료',   priority:'높음', start:'2026-02-10', end:'2026-02-28', progress:100, memo:'' },
+        { id:105, parentId:null, name:'개발',                  assignee:'박민준', status:'진행중', priority:'높음', start:'2026-03-01', end:'2026-05-31', progress:50,  memo:'' },
+        { id:106, parentId:105,  name:'프론트엔드 개발',       assignee:'정하늘', status:'진행중', priority:'높음', start:'2026-03-01', end:'2026-04-30', progress:60,  memo:'' },
+        { id:107, parentId:105,  name:'백엔드 API 개발',       assignee:'박민준', status:'진행중', priority:'높음', start:'2026-03-01', end:'2026-05-15', progress:45,  memo:'' },
+        { id:108, parentId:105,  name:'배치 프로세스 개발',    assignee:'나현재', status:'예정',   priority:'보통', start:'2026-04-01', end:'2026-05-31', progress:0,   memo:'' },
+        { id:109, parentId:null, name:'테스트',                assignee:'최수연', status:'예정',   priority:'보통', start:'2026-06-01', end:'2026-06-20', progress:0,   memo:'' },
+        { id:110, parentId:null, name:'배포 및 안정화',        assignee:'김철수', status:'예정',   priority:'높음', start:'2026-06-21', end:'2026-06-30', progress:0,   memo:'' },
+      ],
+      2: [
+        { id:201, parentId:null, name:'기획/UX 설계',          assignee:'이영희', status:'완료',   priority:'높음', start:'2026-02-01', end:'2026-02-20', progress:100, memo:'' },
+        { id:202, parentId:null, name:'디자인',                 assignee:'최수연', status:'완료',   priority:'높음', start:'2026-02-15', end:'2026-03-10', progress:100, memo:'' },
+        { id:203, parentId:null, name:'개발',                   assignee:'나현재', status:'지연',   priority:'높음', start:'2026-03-01', end:'2026-04-30', progress:30,  memo:'API 연동 지연' },
+        { id:204, parentId:203,  name:'iOS 개발',               assignee:'나현재', status:'지연',   priority:'높음', start:'2026-03-01', end:'2026-04-20', progress:25,  memo:'' },
+        { id:205, parentId:203,  name:'Android 개발',           assignee:'최수연', status:'진행중', priority:'높음', start:'2026-03-01', end:'2026-04-30', progress:35,  memo:'' },
+        { id:206, parentId:null, name:'QA',                     assignee:'이영희', status:'예정',   priority:'보통', start:'2026-05-01', end:'2026-05-20', progress:0,   memo:'' },
+        { id:207, parentId:null, name:'출시',                   assignee:'이영희', status:'예정',   priority:'높음', start:'2026-05-21', end:'2026-05-31', progress:0,   memo:'' },
+      ],
+      3: [
+        { id:301, parentId:null, name:'데이터 수집 모듈',       assignee:'박민준', status:'진행중', priority:'높음', start:'2026-02-15', end:'2026-04-15', progress:40,  memo:'' },
+        { id:302, parentId:null, name:'분석 엔진',              assignee:'정하늘', status:'진행중', priority:'높음', start:'2026-03-01', end:'2026-06-30', progress:20,  memo:'' },
+        { id:303, parentId:null, name:'시각화 대시보드',        assignee:'나현재', status:'진행중', priority:'보통', start:'2026-03-20', end:'2026-07-31', progress:10,  memo:'' },
+        { id:304, parentId:null, name:'인프라 구성',            assignee:'김철수', status:'완료',   priority:'높음', start:'2026-02-15', end:'2026-03-15', progress:100, memo:'' },
+      ],
+      4: [
+        { id:401, parentId:null, name:'현황 분석',              assignee:'최수연', status:'완료',   priority:'높음', start:'2026-01-15', end:'2026-02-15', progress:100, memo:'' },
+        { id:402, parentId:null, name:'클라우드 아키텍처 설계', assignee:'나현재', status:'완료',   priority:'높음', start:'2026-02-01', end:'2026-02-28', progress:100, memo:'' },
+        { id:403, parentId:null, name:'마이그레이션',           assignee:'최수연', status:'지연',   priority:'높음', start:'2026-03-01', end:'2026-04-15', progress:30,  memo:'IAM 이슈' },
+        { id:404, parentId:403,  name:'개발 서버 이전',         assignee:'최수연', status:'지연',   priority:'높음', start:'2026-03-01', end:'2026-03-31', progress:40,  memo:'' },
+        { id:405, parentId:403,  name:'운영 서버 이전',         assignee:'나현재', status:'예정',   priority:'높음', start:'2026-04-01', end:'2026-04-20', progress:0,   memo:'' },
+        { id:406, parentId:null, name:'검증 및 안정화',         assignee:'최수연', status:'예정',   priority:'보통', start:'2026-04-21', end:'2026-04-30', progress:0,   memo:'' },
+      ],
+    };
+
+    let nextTaskId = 500;
+    let selectedProjectId = 1;
+    let editTaskId = null;
+    let collapsedIds = new Set();
+    let showGantt = false;
+
+    const statusCfg = {
+      '완료':   { text:'text-emerald-700', bg:'bg-emerald-50', border:'border-emerald-200', dot:'bg-emerald-400', color:'#10b981' },
+      '진행중': { text:'text-blue-700',    bg:'bg-blue-50',    border:'border-blue-200',    dot:'bg-blue-400',    color:'#3b82f6' },
+      '지연':   { text:'text-red-700',     bg:'bg-red-50',     border:'border-red-200',     dot:'bg-red-400',     color:'#ef4444' },
+      '예정':   { text:'text-gray-600',    bg:'bg-gray-100',   border:'border-gray-200',    dot:'bg-gray-400',    color:'#9ca3af' },
+    };
+    const priorityColor = { '높음':'text-red-500', '보통':'text-amber-500', '낮음':'text-gray-400' };
+    const progressColor = p => p>=80?'#10b981':p>=50?'#5038A6':p>=30?'#f59e0b':'#ef4444';
+
+    // ── 프로젝트 목록 사이드 ──
+    function renderProjectList() {
+      document.getElementById('projectList').innerHTML = projectsMeta.map(p => `
+        <button onclick="selectProject(${p.id})" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition ${selectedProjectId===p.id ? 'text-white' : 'text-gray-600 hover:bg-gray-50'}"
+          style="${selectedProjectId===p.id ? 'background:#5038A6;' : ''}">
+          ${p.name}
+        </button>`).join('');
+    }
+
+    function selectProject(id) {
+      selectedProjectId = id;
+      collapsedIds = new Set();
+      renderProjectList();
+      renderSummary();
+      renderWbs();
+    }
+
+    // ── 요약 ──
+    function renderSummary() {
+      const taskList = tasks[selectedProjectId] || [];
+      const proj = projectsMeta.find(p => p.id === selectedProjectId);
+      const leaves = taskList.filter(t => !taskList.some(x => x.parentId === t.id));
+      const total = leaves.length;
+      const done  = leaves.filter(t => t.status === '완료').length;
+      const active= leaves.filter(t => t.status === '진행중').length;
+      const delay = leaves.filter(t => t.status === '지연').length;
+      const pct   = total ? Math.round(done/total*100) : 0;
+      const daysLeft = proj ? Math.ceil((new Date(proj.end)-new Date())/86400000) : 0;
+
+      document.getElementById('sumTotal').textContent   = total;
+      document.getElementById('sumDone').textContent    = done;
+      document.getElementById('sumActive').textContent  = active;
+      document.getElementById('sumDelay').textContent   = delay;
+      document.getElementById('sumBar').style.width     = pct + '%';
+      document.getElementById('sumPct').textContent     = pct + '% 완료';
+      document.getElementById('sumDeadline').textContent= proj ? proj.end : '—';
+      document.getElementById('sumDaysLeft').textContent= proj ? (daysLeft<0?`${Math.abs(daysLeft)}일 초과`:`${daysLeft}일`) : '—';
+      document.getElementById('sumDaysLeft').style.color= daysLeft<7?'#ef4444':'#5038A6';
+      document.getElementById('wbsProjectName').textContent = proj ? proj.name : '—';
+    }
+
+    // ── WBS 렌더 ──
+    function getTree() {
+      const taskList = (tasks[selectedProjectId] || []).filter(t => {
+        const sf = document.getElementById('wbsStatusFilter').value;
+        const s  = document.getElementById('wbsSearch').value.toLowerCase();
+        if (sf && t.status !== sf) return false;
+        if (s  && !t.name.toLowerCase().includes(s)) return false;
+        return true;
+      });
+      return taskList;
+    }
+
+    function renderWbs() {
+      const taskList = tasks[selectedProjectId] || [];
+      const sf = document.getElementById('wbsStatusFilter').value;
+      const s  = document.getElementById('wbsSearch').value.toLowerCase();
+
+      // 트리 순서 생성 (DFS)
+      function getChildren(parentId) {
+        return taskList.filter(t => t.parentId === parentId);
+      }
+      function traverse(parentId, depth) {
+        return getChildren(parentId).flatMap(t => {
+          const match = (!sf || t.status === sf) && (!s || t.name.toLowerCase().includes(s));
+          const childrenRaw = traverse(t.id, depth+1);
+          if (!match && !childrenRaw.length) return [];
+          return [{ ...t, depth }].concat(collapsedIds.has(t.id) ? [] : childrenRaw);
+        });
+      }
+      const rows = traverse(null, 0);
+
+      const body = document.getElementById('wbsBody');
+      const empty = document.getElementById('wbsEmpty');
+
+      // 헤더
+      const ganttCols = showGantt ? buildGanttHeader() : '';
+      document.getElementById('wbsHeader').style.gridTemplateColumns = showGantt
+        ? '1.5fr 80px 100px 100px 60px 90px 70px 50px repeat(8, 28px)'
+        : '1.5fr 80px 100px 100px 60px 90px 70px 50px';
+      document.getElementById('wbsHeader').innerHTML = `
+        <div class="px-4 py-2.5">업무명</div>
+        <div class="px-2 py-2.5">상태</div>
+        <div class="px-2 py-2.5">담당자</div>
+        <div class="px-2 py-2.5">시작일</div>
+        <div class="px-2 py-2.5">종료일</div>
+        <div class="px-2 py-2.5">진척도</div>
+        <div class="px-2 py-2.5">우선순위</div>
+        <div class="px-2 py-2.5 text-center">액션</div>
+        ${ganttCols}`;
+
+      if (!rows.length) { body.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+
+      // 간트 날짜 범위
+      const ganttDates = showGantt ? getGanttDates() : [];
+      const todayStr   = new Date().toISOString().slice(0,10);
+
+      body.innerHTML = rows.map((t,idx) => {
+        const sc = statusCfg[t.status] || statusCfg['예정'];
+        const pc = progressColor(t.progress);
+        const hasChildren = taskList.some(x => x.parentId === t.id);
+        const isCollapsed = collapsedIds.has(t.id);
+        const indentCls = ['indent-0','indent-1','indent-2'][Math.min(t.depth,2)];
+        const levelCls  = ['level-0','level-1','level-2'][Math.min(t.depth,2)];
+
+        // 간트 셀
+        const ganttCells = showGantt ? ganttDates.map(d => {
+          const inRange = t.start && t.end && d >= t.start && d <= t.end;
+          const isToday = d === todayStr;
+          return `<div class="gantt-cell flex items-center justify-center ${isToday?'gantt-today':''}">
+            ${inRange ? `<div class="gantt-bar w-full" style="background:${sc.color};opacity:0.7;"></div>` : ''}
+          </div>`;
+        }).join('') : '';
+
+        return `<div class="wbs-row ${levelCls} grid items-center text-xs" style="grid-template-columns:${showGantt?'1.5fr 80px 100px 100px 60px 90px 70px 50px repeat(8,28px)':'1.5fr 80px 100px 100px 60px 90px 70px 50px'}">
+          <div class="${indentCls} px-2 py-2.5 flex items-center gap-1.5 min-w-0">
+            ${hasChildren ? `<button onclick="toggleCollapse(${t.id})" class="w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition collapse-btn ${isCollapsed?'collapsed':''}">
+              <i class="fa-solid fa-chevron-down text-xs"></i></button>` : '<span class="w-5 flex-shrink-0"></span>'}
+            ${t.depth===0 ? `<i class="fa-solid fa-folder text-gray-400 text-xs flex-shrink-0"></i>` : `<i class="fa-regular fa-circle-dot text-gray-300 text-xs flex-shrink-0"></i>`}
+            <span class="truncate font-${t.depth===0?'bold':'medium'} text-gray-${t.depth===0?'800':'700'}">${t.name}</span>
+          </div>
+          <div class="px-2 py-2.5">
+            <span class="status-badge ${sc.bg} ${sc.text} ${sc.border}">
+              <span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${t.status}
+            </span>
+          </div>
+          <div class="px-2 py-2.5 text-gray-600">${t.assignee}</div>
+          <div class="px-2 py-2.5 text-gray-500">${t.start||'—'}</div>
+          <div class="px-2 py-2.5 text-gray-500">${t.end||'—'}</div>
+          <div class="px-2 py-2.5">
+            <div class="flex items-center gap-1.5">
+              <div class="progress-bar w-14"><div class="progress-bar-fill" style="width:${t.progress}%;background:${pc};"></div></div>
+              <span class="font-semibold" style="color:${pc};">${t.progress}%</span>
+            </div>
+          </div>
+          <div class="px-2 py-2.5">
+            <span class="font-semibold ${priorityColor[t.priority]||'text-gray-400'}">${t.priority}</span>
+          </div>
+          <div class="px-2 py-2.5 flex items-center justify-center">
+            <button onclick="openTaskModal('edit', ${t.id})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition">
+              <i class="fa-regular fa-pen-to-square"></i>
+            </button>
+          </div>
+          ${ganttCells}
+        </div>`;
+      }).join('');
+    }
+
+    // ── 간트 헬퍼 ──
+    function getGanttDates() {
+      const taskList = tasks[selectedProjectId] || [];
+      const dates = [];
+      const proj = projectsMeta.find(p => p.id === selectedProjectId);
+      if (!proj) return dates;
+      let d = new Date(proj.end);
+      d.setDate(d.getDate() - 7);
+      for (let i=0; i<8; i++) {
+        dates.push(d.toISOString().slice(0,10));
+        d.setDate(d.getDate()+1);
+      }
+      return dates;
+    }
+
+    function buildGanttHeader() {
+      const dates = getGanttDates();
+      const today = new Date().toISOString().slice(0,10);
+      return dates.map(d => `<div class="gantt-cell text-center py-2 text-xs ${d===today?'text-red-500 font-bold':'text-gray-400'}">${d.slice(8)}</div>`).join('');
+    }
+
+    function toggleGantt() {
+      showGantt = !showGantt;
+      const btn = document.getElementById('ganttToggleBtn');
+      btn.style.background = showGantt ? 'rgba(80,56,166,0.08)' : '';
+      btn.style.borderColor = showGantt ? '#5038A6' : '';
+      btn.style.color = showGantt ? '#5038A6' : '';
+      renderWbs();
+    }
+
+    function toggleCollapse(id) {
+      if (collapsedIds.has(id)) collapsedIds.delete(id); else collapsedIds.add(id);
+      renderWbs();
+    }
+
+    function expandAll() { collapsedIds.clear(); renderWbs(); }
+
+    // ── 업무 모달 ──
+    function openTaskModal(mode, id=null) {
+      editTaskId = (mode==='edit') ? id : null;
+      document.getElementById('taskModal').classList.remove('hidden');
+      document.getElementById('taskModalTitle').textContent = mode==='create' ? '업무 추가' : '업무 수정';
+      document.getElementById('tDeleteBtn').classList.toggle('hidden', mode==='create');
+
+      // 상위 업무 옵션 갱신
+      const taskList = tasks[selectedProjectId] || [];
+      const sel = document.getElementById('tParent');
+      sel.innerHTML = '<option value="">없음 (최상위)</option>' + taskList
+        .filter(t => t.id !== editTaskId)
+        .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+      if (mode==='create') {
+        ['tName','tMemo'].forEach(i=>document.getElementById(i).value='');
+        document.getElementById('tStatus').value   = '예정';
+        document.getElementById('tPriority').value = '보통';
+        document.getElementById('tAssignee').value = '김철수';
+        document.getElementById('tParent').value   = '';
+        const today = new Date().toISOString().slice(0,10);
+        document.getElementById('tStart').value    = today;
+        document.getElementById('tEnd').value      = today;
+        document.getElementById('tProgress').value = '0';
+        document.getElementById('tProgressVal').textContent = '0%';
+      } else {
+        const t = taskList.find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('tName').value       = t.name;
+        document.getElementById('tStatus').value     = t.status;
+        document.getElementById('tPriority').value   = t.priority;
+        document.getElementById('tAssignee').value   = t.assignee;
+        document.getElementById('tParent').value     = t.parentId || '';
+        document.getElementById('tStart').value      = t.start;
+        document.getElementById('tEnd').value        = t.end;
+        document.getElementById('tProgress').value   = t.progress;
+        document.getElementById('tProgressVal').textContent = t.progress + '%';
+        document.getElementById('tMemo').value       = t.memo;
+      }
+    }
+
+    function closeTaskModal() {
+      document.getElementById('taskModal').classList.add('hidden');
+      editTaskId = null;
+    }
+
+    function saveTask() {
+      const name = document.getElementById('tName').value.trim();
+      if (!name) { alert('업무명을 입력하세요.'); return; }
+      const parentVal = document.getElementById('tParent').value;
+      const data = {
+        name,
+        parentId:  parentVal ? parseInt(parentVal) : null,
+        assignee:  document.getElementById('tAssignee').value,
+        status:    document.getElementById('tStatus').value,
+        priority:  document.getElementById('tPriority').value,
+        start:     document.getElementById('tStart').value,
+        end:       document.getElementById('tEnd').value,
+        progress:  parseInt(document.getElementById('tProgress').value),
+        memo:      document.getElementById('tMemo').value,
+      };
+      if (!tasks[selectedProjectId]) tasks[selectedProjectId] = [];
+      if (editTaskId) {
+        const idx = tasks[selectedProjectId].findIndex(t => t.id === editTaskId);
+        if (idx > -1) tasks[selectedProjectId][idx] = { ...tasks[selectedProjectId][idx], ...data };
+      } else {
+        tasks[selectedProjectId].push({ id: nextTaskId++, ...data });
+      }
+      closeTaskModal();
+      renderSummary();
+      renderWbs();
+    }
+
+    function deleteTask() {
+      if (!confirm('이 업무를 삭제하시겠습니까?')) return;
+      // 하위 업무도 함께 삭제
+      function collectIds(id) {
+        const children = (tasks[selectedProjectId]||[]).filter(t=>t.parentId===id).map(t=>t.id);
+        return [id, ...children.flatMap(cid=>collectIds(cid))];
+      }
+      const ids = collectIds(editTaskId);
+      tasks[selectedProjectId] = (tasks[selectedProjectId]||[]).filter(t=>!ids.includes(t.id));
+      closeTaskModal();
+      renderSummary();
+      renderWbs();
+    }
+
+    // ── Init ──
+    renderProjectList();
+    renderSummary();
+    renderWbs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 성과 보고서</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    .kpi-card{transition:all .2s;}
+    .kpi-card:hover{box-shadow:0 8px 24px rgba(80,56,166,.12);}
+    .tab-btn{padding:10px 16px;font-size:13px;font-weight:500;border-bottom:2px solid transparent;color:#9ca3af;cursor:pointer;transition:all .15s;}
+    .tab-btn.active{border-bottom-color:#5038A6;color:#5038A6;font-weight:600;}
+    .rank-bar{height:8px;border-radius:4px;background:#e5e7eb;overflow:hidden;}
+    .rank-bar-fill{height:100%;border-radius:4px;}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div><h1 class="text-xl font-bold text-gray-800">성과 보고서</h1><p class="text-sm text-gray-500 mt-0.5">업무 및 프로젝트 성과를 분석하세요.</p></div>
+        <div class="flex items-center gap-2">
+          <select id="periodSel" onchange="renderAll()" class="px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-purple-400">
+            <option value="month">이번 달</option><option value="quarter" selected>1분기</option><option value="half">상반기</option><option value="year">올해 전체</option>
+          </select>
+          <button class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 transition">
+            <i class="fa-solid fa-download text-xs"></i> 내보내기
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI 카드 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="kpi-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3"><span class="text-xs font-semibold text-gray-500">완료 업무</span><div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(80,56,166,.1);"><i class="fa-solid fa-circle-check text-xs" style="color:#5038A6;"></i></div></div>
+          <p class="text-3xl font-bold text-gray-800" id="kpiDone">47</p>
+          <p class="text-xs text-emerald-500 mt-1 flex items-center gap-1"><i class="fa-solid fa-arrow-up text-xs"></i>전월 대비 +12%</p>
+        </div>
+        <div class="kpi-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3"><span class="text-xs font-semibold text-gray-500">일정 준수율</span><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50"><i class="fa-solid fa-calendar-check text-xs text-emerald-500"></i></div></div>
+          <p class="text-3xl font-bold text-emerald-600" id="kpiRate">82%</p>
+          <p class="text-xs text-gray-400 mt-1">목표 85%</p>
+        </div>
+        <div class="kpi-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3"><span class="text-xs font-semibold text-gray-500">평균 진척도</span><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50"><i class="fa-solid fa-chart-line text-xs text-blue-500"></i></div></div>
+          <p class="text-3xl font-bold text-blue-600" id="kpiAvg">68%</p>
+          <p class="text-xs text-gray-400 mt-1">전체 프로젝트 평균</p>
+        </div>
+        <div class="kpi-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3"><span class="text-xs font-semibold text-gray-500">지연 업무</span><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50"><i class="fa-solid fa-triangle-exclamation text-xs text-red-500"></i></div></div>
+          <p class="text-3xl font-bold text-red-500" id="kpiDelay">8</p>
+          <p class="text-xs text-red-400 mt-1 flex items-center gap-1"><i class="fa-solid fa-arrow-down text-xs"></i>전월 대비 -3건</p>
+        </div>
+      </div>
+
+      <!-- 탭 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex border-b border-gray-100 px-4 overflow-x-auto">
+          <button class="tab-btn active" onclick="switchTab('overview',this)">종합 현황</button>
+          <button class="tab-btn" onclick="switchTab('project',this)">프로젝트별</button>
+          <button class="tab-btn" onclick="switchTab('member',this)">팀원별</button>
+          <button class="tab-btn" onclick="switchTab('trend',this)">추이 분석</button>
+        </div>
+
+        <!-- 종합 현황 -->
+        <div id="tab-overview" class="tab-content p-5">
+          <div class="grid grid-cols-2 gap-6">
+            <div><p class="text-sm font-semibold text-gray-700 mb-3">업무 상태 분포</p><div style="max-width:260px;margin:0 auto;"><canvas id="chartStatus"></canvas></div></div>
+            <div><p class="text-sm font-semibold text-gray-700 mb-3">월별 완료 업무 추이</p><canvas id="chartMonthly" height="160"></canvas></div>
+          </div>
+        </div>
+
+        <!-- 프로젝트별 -->
+        <div id="tab-project" class="tab-content hidden p-5">
+          <div class="space-y-4" id="projectPerfList"></div>
+        </div>
+
+        <!-- 팀원별 -->
+        <div id="tab-member" class="tab-content hidden p-5">
+          <canvas id="chartMember" height="180"></canvas>
+        </div>
+
+        <!-- 추이 분석 -->
+        <div id="tab-trend" class="tab-content hidden p-5">
+          <div class="grid grid-cols-2 gap-6">
+            <div><p class="text-sm font-semibold text-gray-700 mb-3">일정 준수율 추이</p><canvas id="chartTrend" height="180"></canvas></div>
+            <div><p class="text-sm font-semibold text-gray-700 mb-3">우선순위별 완료 현황</p><canvas id="chartPriority" height="180"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    let charts={};
+    function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+    function switchTab(id,el){
+      document.querySelectorAll('.tab-content').forEach(t=>t.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById('tab-'+id).classList.remove('hidden');
+      el.classList.add('active');
+      if(id==='overview')renderOverview();
+      if(id==='project')renderProject();
+      if(id==='member')renderMember();
+      if(id==='trend')renderTrend();
+    }
+
+    function renderAll(){renderOverview();}
+
+    function renderOverview(){
+      destroyChart('chartStatus');destroyChart('chartMonthly');
+      charts.chartStatus=new Chart(document.getElementById('chartStatus'),{type:'doughnut',data:{labels:['완료','진행중','지연','예정'],datasets:[{data:[47,24,8,12],backgroundColor:['#10b981','#3b82f6','#ef4444','#9ca3af'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},cutout:'68%'}});
+      charts.chartMonthly=new Chart(document.getElementById('chartMonthly'),{type:'bar',data:{labels:['1월','2월','3월'],datasets:[{label:'완료',data:[12,18,17],backgroundColor:'rgba(80,56,166,.8)',borderRadius:4},{label:'지연',data:[4,3,1],backgroundColor:'rgba(239,68,68,.7)',borderRadius:4}]},options:{plugins:{legend:{labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:11}}}}}});
+    }
+
+    function renderProject(){
+      const projects=[
+        {name:'ERP 고도화 프로젝트',done:18,total:30,delay:2,pct:48},
+        {name:'모바일 앱 리뉴얼',    done:8, total:20,delay:4,pct:32},
+        {name:'데이터 분석 플랫폼',  done:5, total:18,delay:1,pct:25},
+        {name:'인프라 클라우드 전환',done:12,total:16,delay:1,pct:35},
+      ];
+      document.getElementById('projectPerfList').innerHTML=projects.map(p=>{
+        const rate=Math.round(p.done/p.total*100);
+        const bc=rate>=80?'#10b981':rate>=50?'#5038A6':rate>=30?'#f59e0b':'#ef4444';
+        return`<div class="border border-gray-100 rounded-xl p-4 hover:border-purple-200 transition">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gray-800">${p.name}</span>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+              <span>완료 <strong class="text-gray-800">${p.done}</strong>/${p.total}</span>
+              ${p.delay?`<span class="text-red-500 font-medium">지연 ${p.delay}건</span>`:''}
+              <span class="font-bold" style="color:${bc};">${rate}%</span>
+            </div>
+          </div>
+          <div class="rank-bar"><div class="rank-bar-fill" style="width:${rate}%;background:${bc};"></div></div>
+          <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">
+            <span>진척도 ${p.pct}%</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderMember(){
+      destroyChart('chartMember');
+      charts.chartMember=new Chart(document.getElementById('chartMember'),{type:'bar',data:{labels:['김철수','이영희','박민준','최수연','정하늘','나현재'],datasets:[{label:'완료',data:[12,10,9,7,6,3],backgroundColor:'rgba(80,56,166,.8)',borderRadius:4},{label:'지연',data:[1,2,0,3,1,1],backgroundColor:'rgba(239,68,68,.7)',borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{color:'#f3f4f6'},ticks:{font:{size:11}}},y:{grid:{display:false},ticks:{font:{size:12}}}}}});
+    }
+
+    function renderTrend(){
+      destroyChart('chartTrend');destroyChart('chartPriority');
+      charts.chartTrend=new Chart(document.getElementById('chartTrend'),{type:'line',data:{labels:['1월','2월','3월'],datasets:[{label:'준수율(%)',data:[78,80,82],borderColor:'#5038A6',backgroundColor:'rgba(80,56,166,.08)',tension:.3,fill:true,pointBackgroundColor:'#5038A6'}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:60,max:100,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'#f3f4f6'}}}}});
+      charts.chartPriority=new Chart(document.getElementById('chartPriority'),{type:'bar',data:{labels:['높음','보통','낮음'],datasets:[{label:'완료',data:[22,18,7],backgroundColor:['rgba(239,68,68,.7)','rgba(245,158,11,.7)','rgba(156,163,175,.7)'],borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:11}}}}}});
+    }
+
+    renderOverview();
+  </script>
+</body>
+</html>

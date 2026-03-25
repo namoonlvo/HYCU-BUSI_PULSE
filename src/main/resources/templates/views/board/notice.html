@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 공지사항</title>
+  <style>
+    .filter-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #e5e7eb;}
+    .filter-chip.active{background:#5038A6;color:#fff;border-color:#5038A6;}
+    .filter-chip:not(.active){background:#fff;color:#6b7280;}
+    .filter-chip:not(.active):hover{border-color:#5038A6;color:#5038A6;}
+    .notice-row{cursor:pointer;transition:background .1s;}
+    .notice-row:hover{background:rgba(80,56,166,.03);}
+    .notice-row.pinned{background:rgba(80,56,166,.04);}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h1 class="text-xl font-bold text-gray-800">공지사항</h1><p class="text-sm text-gray-500 mt-0.5">사내 공지 및 중요 안내를 확인하세요.</p></div>
+        <button onclick="openModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;"><i class="fa-solid fa-plus text-xs"></i> 공지 작성</button>
+      </div>
+
+      <!-- 필터 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[160px] max-w-xs"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="searchInput" placeholder="제목 검색..." oninput="render()" class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+        <div class="flex gap-1.5">
+          <button class="filter-chip active" data-val="all" onclick="setFilter('all',this)">전체</button>
+          <button class="filter-chip" data-val="일반" onclick="setFilter('일반',this)">일반</button>
+          <button class="filter-chip" data-val="긴급" onclick="setFilter('긴급',this)">긴급</button>
+          <button class="filter-chip" data-val="인사" onclick="setFilter('인사',this)">인사</button>
+          <button class="filter-chip" data-val="시스템" onclick="setFilter('시스템',this)">시스템</button>
+        </div>
+        <span class="ml-auto text-xs text-gray-400" id="rowCount"></span>
+      </div>
+
+      <!-- 공지 목록 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-8">번호</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-16">분류</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">제목</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">작성자</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-24">작성일</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-14">조회</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-14">액션</th>
+          </tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+        <div id="listEmpty" class="hidden py-14 text-center"><i class="fa-solid fa-bullhorn text-gray-300 text-3xl block mb-2"></i><p class="text-sm text-gray-400">공지사항이 없습니다</p></div>
+      </div>
+      <!-- 페이지네이션 -->
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500">페이지 <span id="currentPage">1</span>/<span id="totalPage">1</span></p>
+        <div class="flex gap-1" id="paginationBtns"></div>
+      </div>
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 작성/상세 모달 -->
+  <div id="noticeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="modalTitle">공지 작성</h2>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="px-6 py-5 space-y-4" id="modalBody"></div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    let notices=[
+      {id:1, category:'긴급', title:'[긴급] 3월 26일 서버 점검 안내',                    author:'시스템관리자', date:'2026-03-22', views:248, pinned:true,  content:'3월 26일(목) 02:00 ~ 04:00 서버 정기 점검이 진행됩니다. 해당 시간 동안 시스템 접속이 불가하오니 업무에 참고 바랍니다.'},
+      {id:2, category:'인사', title:'[인사] 2026년 1분기 우수 사원 포상 안내',          author:'인사팀',      date:'2026-03-20', views:187, pinned:true,  content:'2026년 1분기 우수 사원으로 이영희 선임, 박민준 주임이 선정되었습니다. 축하드립니다!'},
+      {id:3, category:'일반', title:'사내 카페테리아 메뉴 변경 안내 (4월~)',            author:'시설팀',      date:'2026-03-18', views:122, pinned:false, content:'4월부터 사내 카페테리아 메뉴가 변경됩니다. 새로운 메뉴는 사내 인트라넷에서 확인 가능합니다.'},
+      {id:4, category:'시스템', title:'Busi Pulse v2.1 업데이트 안내',                  author:'IT기획팀',    date:'2026-03-15', views:310, pinned:false, content:'Busi Pulse v2.1이 배포되었습니다. 주요 변경 사항: WBS 간트 차트 추가, 성과 보고서 기능 개선, 버그 수정.'},
+      {id:5, category:'일반', title:'2026년 하계 휴가 일정 안내',                       author:'인사팀',      date:'2026-03-10', views:204, pinned:false, content:'2026년 하계 집중 휴가 기간은 7월 28일 ~ 8월 8일입니다. 휴가 계획을 미리 팀장에게 보고해 주세요.'},
+      {id:6, category:'일반', title:'4월 전체 회의 일정 안내',                          author:'경영지원팀',  date:'2026-03-08', views:156, pinned:false, content:'4월 전체 회의는 4월 3일(금) 14:00 대회의실에서 진행됩니다.'},
+      {id:7, category:'인사', title:'신입사원 온보딩 일정 공지',                        author:'인사팀',      date:'2026-03-05', views:98,  pinned:false, content:'3월 17일부터 시작되는 신입사원 온보딩 일정을 첨부 파일에서 확인해 주세요.'},
+      {id:8, category:'시스템', title:'이메일 시스템 업그레이드 완료 안내',             author:'시스템관리자', date:'2026-03-01', views:77,  pinned:false, content:'이메일 시스템 업그레이드가 완료되었습니다. 첨부파일 최대 용량이 10MB에서 25MB로 확대되었습니다.'},
+    ];
+    let nextId=9, editId=null, currentFilter='all', page=1;
+    const PAGE_SIZE=10;
+    const catColor={'긴급':'text-red-600 bg-red-50 border-red-200','인사':'text-purple-600 bg-purple-50 border-purple-200','시스템':'text-blue-600 bg-blue-50 border-blue-200','일반':'text-gray-600 bg-gray-100 border-gray-200'};
+
+    function getFiltered(){
+      const s=document.getElementById('searchInput').value.toLowerCase();
+      return notices.filter(n=>{
+        if(currentFilter!=='all'&&n.category!==currentFilter)return false;
+        if(s&&!n.title.toLowerCase().includes(s))return false;
+        return true;
+      }).sort((a,b)=>{
+        if(a.pinned!==b.pinned)return a.pinned?-1:1;
+        return b.date.localeCompare(a.date);
+      });
+    }
+    function render(){
+      const filtered=getFiltered();
+      const total=filtered.length;
+      const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+      if(page>totalPages)page=totalPages;
+      const slice=filtered.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+      document.getElementById('rowCount').textContent=`총 ${total}건`;
+      document.getElementById('currentPage').textContent=page;
+      document.getElementById('totalPage').textContent=totalPages;
+      const tbody=document.getElementById('listBody'),empty=document.getElementById('listEmpty');
+      if(!slice.length){tbody.innerHTML='';empty.classList.remove('hidden');}
+      else{
+        empty.classList.add('hidden');
+        tbody.innerHTML=slice.map((n,i)=>{
+          const cc=catColor[n.category]||catColor['일반'];
+          return`<tr class="notice-row border-b border-gray-50 ${n.pinned?'pinned':''}" onclick="openModal('view',${n.id})">
+            <td class="px-4 py-3 text-xs text-gray-400">${n.pinned?'<i class="fa-solid fa-thumbtack text-purple-400"></i>':total-(page-1)*PAGE_SIZE-i}</td>
+            <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${cc}">${n.category}</span></td>
+            <td class="px-4 py-3"><p class="text-sm font-medium text-gray-800 hover:text-purple-600 transition">${n.title}</p></td>
+            <td class="px-4 py-3 text-xs text-gray-500">${n.author}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${n.date}</td>
+            <td class="px-4 py-3 text-xs text-gray-400">${n.views}</td>
+            <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+              <button onclick="openModal('edit',${n.id})" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+      // 페이지네이션
+      let ph='';for(let i=1;i<=totalPages;i++)ph+=`<button onclick="goPage(${i})" class="w-8 h-8 text-xs font-medium rounded-lg transition ${i===page?'text-white shadow-sm':'text-gray-500 hover:bg-gray-100 border border-gray-200'}" ${i===page?'style="background:#5038A6;"':''}>${i}</button>`;
+      document.getElementById('paginationBtns').innerHTML=ph;
+    }
+    function goPage(p){page=p;render();}
+    function setFilter(val,el){currentFilter=val;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));el.classList.add('active');page=1;render();}
+
+    function openModal(mode,id=null){
+      editId=(mode!=='create')?id:null;
+      document.getElementById('noticeModal').classList.remove('hidden');
+      const footer=document.getElementById('modalFooter');
+      if(mode==='view'){
+        const n=notices.find(x=>x.id===id);if(!n)return;
+        n.views++;
+        const cc=catColor[n.category]||catColor['일반'];
+        document.getElementById('modalTitle').textContent='공지 상세';
+        document.getElementById('modalBody').innerHTML=`
+          <div class="flex items-center gap-2 mb-2"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${cc}">${n.category}</span>${n.pinned?'<span class="text-xs text-purple-500 font-medium"><i class="fa-solid fa-thumbtack text-xs mr-0.5"></i>상단 고정</span>':''}</div>
+          <h3 class="text-lg font-bold text-gray-800 mb-3">${n.title}</h3>
+          <div class="flex items-center gap-4 text-xs text-gray-400 mb-4 pb-4 border-b border-gray-100"><span>작성자: <strong class="text-gray-600">${n.author}</strong></span><span>${n.date}</span><span>조회 ${n.views}</span></div>
+          <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">${n.content}</div>`;
+        footer.innerHTML=`<button onclick="openModal('edit',${n.id})" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-purple-300 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i> 수정</button><button onclick="closeModal()" class="ml-auto px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">닫기</button>`;
+      }else{
+        const n=mode==='edit'?notices.find(x=>x.id===id):null;
+        document.getElementById('modalTitle').textContent=mode==='create'?'공지 작성':'공지 수정';
+        document.getElementById('modalBody').innerHTML=`
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">분류</label><select id="nCat" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option>일반</option><option>긴급</option><option>인사</option><option>시스템</option></select></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">제목 <span class="text-red-400">*</span></label><input type="text" id="nTitle" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition"></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">내용 <span class="text-red-400">*</span></label><textarea id="nContent" rows="8" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none transition"></textarea></div>
+          <div class="flex items-center gap-2"><input type="checkbox" id="nPinned" class="rounded border-gray-300"><label for="nPinned" class="text-sm text-gray-600">상단 고정</label></div>`;
+        if(n){document.getElementById('nCat').value=n.category;document.getElementById('nTitle').value=n.title;document.getElementById('nContent').value=n.content;document.getElementById('nPinned').checked=n.pinned;}
+        footer.innerHTML=`${mode==='edit'?`<button onclick="deleteNotice()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-regular fa-trash-can"></i> 삭제</button>`:''}
+          <div class="flex gap-2 ml-auto"><button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button><button onclick="saveNotice()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;"><i class="fa-solid fa-floppy-disk text-xs"></i> 저장</button></div>`;
+      }
+      render();
+    }
+    function closeModal(){document.getElementById('noticeModal').classList.add('hidden');editId=null;}
+    function saveNotice(){
+      const title=document.getElementById('nTitle').value.trim();
+      const content=document.getElementById('nContent').value.trim();
+      if(!title||!content){alert('제목과 내용을 입력하세요.');return;}
+      const data={category:document.getElementById('nCat').value,title,content,pinned:document.getElementById('nPinned').checked,author:'나',date:new Date().toISOString().slice(0,10),views:0};
+      if(editId){const i=notices.findIndex(n=>n.id===editId);if(i>-1)notices[i]={...notices[i],...data};}
+      else notices.push({id:nextId++,...data});
+      closeModal();render();
+    }
+    function deleteNotice(){if(!confirm('삭제하시겠습니까?'))return;notices=notices.filter(n=>n.id!==editId);closeModal();render();}
+    render();
+  </script>
+</body>
+</html>

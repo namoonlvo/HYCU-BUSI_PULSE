@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 코드 관리</title>
+  <style>
+    .filter-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #e5e7eb;}
+    .filter-chip.active{background:#5038A6;color:#fff;border-color:#5038A6;}
+    .filter-chip:not(.active){background:#fff;color:#6b7280;}
+    .filter-chip:not(.active):hover{border-color:#5038A6;color:#5038A6;}
+    .code-row{cursor:pointer;transition:background .1s;}
+    .code-row:hover{background:rgba(80,56,166,.03);}
+    .group-card{transition:all .15s;cursor:pointer;}
+    .group-card:hover{border-color:#c4b5fd;}
+    .group-card.selected{border-color:#5038A6;background:rgba(80,56,166,.04);}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h1 class="text-xl font-bold text-gray-800">공통 코드 관리</h1><p class="text-sm text-gray-500 mt-0.5">시스템 공통 코드 그룹 및 코드 항목을 관리하세요.</p></div>
+        <div class="flex gap-2">
+          <button onclick="openGroupModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:border-purple-300 hover:text-purple-600 transition"><i class="fa-solid fa-folder-plus text-xs"></i> 그룹 추가</button>
+          <button onclick="openCodeModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;"><i class="fa-solid fa-plus text-xs"></i> 코드 추가</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-12 gap-5">
+        <!-- 코드 그룹 -->
+        <div class="col-span-4">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span class="text-sm font-semibold text-gray-700">코드 그룹</span>
+              <span class="text-xs text-gray-400" id="groupCount"></span>
+            </div>
+            <div class="p-3 border-b border-gray-100">
+              <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="groupSearch" placeholder="그룹 검색..." oninput="renderGroups()" class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+            </div>
+            <div class="divide-y divide-gray-50 max-h-[520px] overflow-y-auto" id="groupList"></div>
+          </div>
+        </div>
+
+        <!-- 코드 목록 -->
+        <div class="col-span-8">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div>
+                <span class="text-sm font-semibold text-gray-700" id="codeListTitle">코드 목록</span>
+                <span class="text-xs text-gray-400 ml-2" id="selectedGroupName"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="codeSearch" placeholder="코드 검색..." oninput="renderCodes()" class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 w-36"></div>
+                <div class="flex gap-1">
+                  <button class="filter-chip active text-xs py-1" data-val="all" onclick="setCodeFilter('all',this)">전체</button>
+                  <button class="filter-chip text-xs py-1" data-val="활성" onclick="setCodeFilter('활성',this)">활성</button>
+                  <button class="filter-chip text-xs py-1" data-val="비활성" onclick="setCodeFilter('비활성',this)">비활성</button>
+                </div>
+                <span class="text-xs text-gray-400" id="codeCount"></span>
+              </div>
+            </div>
+            <table class="w-full text-sm">
+              <thead><tr class="bg-gray-50 border-b border-gray-100">
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">코드값</th>
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">코드명</th>
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">순서</th>
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-20">상태</th>
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">비고</th>
+                <th class="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">액션</th>
+              </tr></thead>
+              <tbody id="codeList"></tbody>
+            </table>
+            <div id="codeEmpty" class="hidden py-14 text-center"><i class="fa-solid fa-code text-gray-300 text-3xl block mb-2"></i><p class="text-sm text-gray-400">코드를 선택하거나 추가하세요</p></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 그룹 모달 -->
+  <div id="groupModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeGroupModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-bold text-gray-800" id="groupModalTitle">코드 그룹 추가</h2>
+        <button onclick="closeGroupModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">그룹 코드 <span class="text-red-400">*</span></label><input type="text" id="gCode" placeholder="예: STATUS, PRIORITY" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">그룹명 <span class="text-red-400">*</span></label><input type="text" id="gName" placeholder="예: 업무 상태" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">설명</label><textarea id="gDesc" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none"></textarea></div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">상태</label><select id="gStatus" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="활성">활성</option><option value="비활성">비활성</option></select></div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center">
+        <button id="gDeleteBtn" onclick="deleteGroup()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-regular fa-trash-can"></i> 삭제</button>
+        <div class="flex gap-2 ml-auto"><button onclick="closeGroupModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button><button onclick="saveGroup()" class="px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;">저장</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 코드 모달 -->
+  <div id="codeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeCodeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-bold text-gray-800" id="codeModalTitle">코드 추가</h2>
+        <button onclick="closeCodeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">코드 그룹 <span class="text-red-400">*</span></label><select id="cGroup" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></select></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">코드값 <span class="text-red-400">*</span></label><input type="text" id="cValue" placeholder="예: 01, IN_PROGRESS" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">코드명 <span class="text-red-400">*</span></label><input type="text" id="cName" placeholder="예: 진행중" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">정렬 순서</label><input type="number" id="cOrder" value="1" min="1" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">상태</label><select id="cStatus" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="활성">활성</option><option value="비활성">비활성</option></select></div>
+        </div>
+        <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">비고</label><input type="text" id="cNote" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 transition"></div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center">
+        <button id="cDeleteBtn" onclick="deleteCode()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-regular fa-trash-can"></i> 삭제</button>
+        <div class="flex gap-2 ml-auto"><button onclick="closeCodeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button><button onclick="saveCode()" class="px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;">저장</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    let groups=[
+      {id:1,code:'TASK_STATUS', name:'업무 상태',    desc:'업무의 진행 상태 코드', status:'활성'},
+      {id:2,code:'PRIORITY',    name:'우선순위',      desc:'업무/프로젝트 우선순위', status:'활성'},
+      {id:3,code:'LEAVE_TYPE',  name:'휴가 유형',     desc:'휴가 신청 유형 코드', status:'활성'},
+      {id:4,code:'DOC_CATEGORY',name:'문서 분류',     desc:'프로젝트 문서 분류 코드', status:'활성'},
+      {id:5,code:'DEPT',        name:'부서 코드',     desc:'조직 부서 코드', status:'활성'},
+      {id:6,code:'USER_ROLE',   name:'사용자 역할',   desc:'시스템 사용자 권한 역할', status:'활성'},
+      {id:7,code:'MEETING_TYPE',name:'회의 유형',     desc:'회의록 회의 유형', status:'비활성'},
+    ];
+    let codes=[
+      {id:1, groupId:1,value:'SCHEDULED',  name:'예정',    order:1,status:'활성', note:''},
+      {id:2, groupId:1,value:'IN_PROGRESS',name:'진행중',  order:2,status:'활성', note:''},
+      {id:3, groupId:1,value:'DONE',       name:'완료',    order:3,status:'활성', note:''},
+      {id:4, groupId:1,value:'DELAYED',    name:'지연',    order:4,status:'활성', note:''},
+      {id:5, groupId:1,value:'CANCELED',   name:'취소',    order:5,status:'활성', note:''},
+      {id:6, groupId:2,value:'HIGH',       name:'높음',    order:1,status:'활성', note:''},
+      {id:7, groupId:2,value:'MEDIUM',     name:'보통',    order:2,status:'활성', note:''},
+      {id:8, groupId:2,value:'LOW',        name:'낮음',    order:3,status:'활성', note:''},
+      {id:9, groupId:3,value:'ANNUAL',     name:'연차',    order:1,status:'활성', note:''},
+      {id:10,groupId:3,value:'HALF_AM',    name:'반차(오전)',order:2,status:'활성',note:''},
+      {id:11,groupId:3,value:'HALF_PM',    name:'반차(오후)',order:3,status:'활성',note:''},
+      {id:12,groupId:3,value:'SICK',       name:'병가',    order:4,status:'활성', note:''},
+      {id:13,groupId:4,value:'PLAN',       name:'기획',    order:1,status:'활성', note:''},
+      {id:14,groupId:4,value:'DESIGN',     name:'설계',    order:2,status:'활성', note:''},
+      {id:15,groupId:4,value:'DEV',        name:'개발',    order:3,status:'활성', note:''},
+      {id:16,groupId:4,value:'TEST',       name:'테스트',  order:4,status:'활성', note:''},
+      {id:17,groupId:5,value:'IT',         name:'IT기획팀',order:1,status:'활성', note:''},
+      {id:18,groupId:5,value:'MOBILE',     name:'모바일팀',order:2,status:'활성', note:''},
+      {id:19,groupId:6,value:'ADMIN',      name:'관리자',  order:1,status:'활성', note:''},
+      {id:20,groupId:6,value:'PM',         name:'PM',      order:2,status:'활성', note:''},
+      {id:21,groupId:6,value:'USER',       name:'일반 사용자',order:3,status:'활성',note:''},
+    ];
+    let nextGid=8,nextCid=22,editGroupId=null,editCodeId=null,selectedGroupId=1,codeFilter='all';
+
+    function renderGroups(){
+      const s=document.getElementById('groupSearch').value.toLowerCase();
+      const filtered=groups.filter(g=>!s||g.name.toLowerCase().includes(s)||g.code.toLowerCase().includes(s));
+      document.getElementById('groupCount').textContent=`${filtered.length}개`;
+      document.getElementById('groupList').innerHTML=filtered.map(g=>{
+        const cnt=codes.filter(c=>c.groupId===g.id).length;
+        const isSelected=g.id===selectedGroupId;
+        return`<div class="group-card p-3 flex items-center justify-between hover:bg-gray-50 ${isSelected?'bg-purple-50':''} transition" onclick="selectGroup(${g.id})" style="${isSelected?'border-left:3px solid #5038A6;':''}" >
+          <div>
+            <p class="text-sm font-semibold ${isSelected?'text-purple-700':'text-gray-800'}">${g.name}</p>
+            <p class="text-xs text-gray-400 font-mono">${g.code}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">${cnt}개</span>
+            <span class="text-xs px-1.5 py-0.5 rounded font-medium ${g.status==='활성'?'bg-emerald-50 text-emerald-600':'bg-gray-100 text-gray-400'}">${g.status}</span>
+            <button onclick="event.stopPropagation();openGroupModal('edit',${g.id})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-purple-100 text-gray-400 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i></button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function selectGroup(id){selectedGroupId=id;renderGroups();renderCodes();}
+
+    function renderCodes(){
+      const s=document.getElementById('codeSearch').value.toLowerCase();
+      const filtered=codes.filter(c=>{
+        if(c.groupId!==selectedGroupId)return false;
+        if(codeFilter!=='all'&&c.status!==codeFilter)return false;
+        if(s&&!c.name.toLowerCase().includes(s)&&!c.value.toLowerCase().includes(s))return false;
+        return true;
+      }).sort((a,b)=>a.order-b.order);
+      const g=groups.find(x=>x.id===selectedGroupId);
+      document.getElementById('selectedGroupName').textContent=g?`(${g.code})`:'';
+      document.getElementById('codeCount').textContent=`${filtered.length}개`;
+      const tbody=document.getElementById('codeList'),empty=document.getElementById('codeEmpty');
+      if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return;}
+      empty.classList.add('hidden');
+      tbody.innerHTML=filtered.map(c=>{
+        const isActive=c.status==='활성';
+        return`<tr class="code-row border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+          <td class="px-4 py-2.5 font-mono text-xs font-semibold text-purple-700 bg-purple-50 rounded-md" style="width:fit-content;"><span class="px-1.5 py-0.5 rounded">${c.value}</span></td>
+          <td class="px-4 py-2.5 text-sm font-medium text-gray-800">${c.name}</td>
+          <td class="px-4 py-2.5 text-xs text-gray-500 text-center">${c.order}</td>
+          <td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full font-medium ${isActive?'bg-emerald-50 text-emerald-600':'bg-gray-100 text-gray-400'}">${c.status}</span></td>
+          <td class="px-4 py-2.5 text-xs text-gray-400">${c.note||'—'}</td>
+          <td class="px-4 py-2.5 text-center"><button onclick="openCodeModal('edit',${c.id})" class="w-6 h-6 inline-flex items-center justify-center rounded hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i></button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setCodeFilter(val,el){codeFilter=val;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderCodes();}
+
+    // 그룹 모달
+    function openGroupModal(mode,id=null){
+      editGroupId=(mode==='edit')?id:null;
+      document.getElementById('groupModalTitle').textContent=mode==='create'?'코드 그룹 추가':'코드 그룹 수정';
+      document.getElementById('gDeleteBtn').classList.toggle('hidden',mode==='create');
+      document.getElementById('groupModal').classList.remove('hidden');
+      if(mode==='create'){['gCode','gName','gDesc'].forEach(i=>document.getElementById(i).value='');document.getElementById('gStatus').value='활성';}
+      else{const g=groups.find(x=>x.id===id);if(!g)return;document.getElementById('gCode').value=g.code;document.getElementById('gName').value=g.name;document.getElementById('gDesc').value=g.desc;document.getElementById('gStatus').value=g.status;}
+    }
+    function closeGroupModal(){document.getElementById('groupModal').classList.add('hidden');editGroupId=null;}
+    function saveGroup(){
+      const code=document.getElementById('gCode').value.trim(),name=document.getElementById('gName').value.trim();
+      if(!code||!name){alert('그룹 코드와 그룹명은 필수입니다.');return;}
+      const data={code,name,desc:document.getElementById('gDesc').value,status:document.getElementById('gStatus').value};
+      if(editGroupId){const i=groups.findIndex(g=>g.id===editGroupId);if(i>-1)groups[i]={...groups[i],...data};}
+      else groups.push({id:nextGid++,...data});
+      closeGroupModal();renderGroups();
+    }
+    function deleteGroup(){if(!confirm('그룹과 하위 코드가 모두 삭제됩니다. 계속하시겠습니까?'))return;codes=codes.filter(c=>c.groupId!==editGroupId);groups=groups.filter(g=>g.id!==editGroupId);if(selectedGroupId===editGroupId)selectedGroupId=groups[0]?.id||null;closeGroupModal();renderGroups();renderCodes();}
+
+    // 코드 모달
+    function openCodeModal(mode,id=null){
+      editCodeId=(mode==='edit')?id:null;
+      document.getElementById('codeModalTitle').textContent=mode==='create'?'코드 추가':'코드 수정';
+      document.getElementById('cDeleteBtn').classList.toggle('hidden',mode==='create');
+      const sel=document.getElementById('cGroup');
+      sel.innerHTML=groups.map(g=>`<option value="${g.id}">${g.name} (${g.code})</option>`).join('');
+      document.getElementById('codeModal').classList.remove('hidden');
+      if(mode==='create'){
+        sel.value=selectedGroupId||groups[0]?.id;
+        ['cValue','cName','cNote'].forEach(i=>document.getElementById(i).value='');
+        document.getElementById('cOrder').value=1;document.getElementById('cStatus').value='활성';
+      }else{
+        const c=codes.find(x=>x.id===id);if(!c)return;
+        sel.value=c.groupId;document.getElementById('cValue').value=c.value;document.getElementById('cName').value=c.name;
+        document.getElementById('cOrder').value=c.order;document.getElementById('cStatus').value=c.status;document.getElementById('cNote').value=c.note;
+      }
+    }
+    function closeCodeModal(){document.getElementById('codeModal').classList.add('hidden');editCodeId=null;}
+    function saveCode(){
+      const value=document.getElementById('cValue').value.trim(),name=document.getElementById('cName').value.trim();
+      if(!value||!name){alert('코드값과 코드명은 필수입니다.');return;}
+      const data={groupId:parseInt(document.getElementById('cGroup').value),value,name,order:parseInt(document.getElementById('cOrder').value)||1,status:document.getElementById('cStatus').value,note:document.getElementById('cNote').value};
+      if(editCodeId){const i=codes.findIndex(c=>c.id===editCodeId);if(i>-1)codes[i]={...codes[i],...data};}
+      else codes.push({id:nextCid++,...data});
+      closeCodeModal();renderCodes();
+    }
+    function deleteCode(){if(!confirm('삭제하시겠습니까?'))return;codes=codes.filter(c=>c.id!==editCodeId);closeCodeModal();renderCodes();}
+
+    renderGroups();renderCodes();
+  </script>
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 프로젝트 목록</title>
+  <style>
+    .status-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:500; border-width:1px; }
+    .progress-bar { height:6px; border-radius:3px; background:#e5e7eb; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+    .card-hover { transition:all 0.2s; }
+    .card-hover:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(80,56,166,0.12); }
+    .view-btn.active { background:#5038A6; color:#fff; }
+    .view-btn { padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; color:#6b7280; transition:all 0.15s; cursor:pointer; }
+    .filter-chip { padding:6px 12px; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; border:1px solid #e5e7eb; }
+    .filter-chip.active { background:#5038A6; color:#fff; border-color:#5038A6; }
+    .filter-chip:not(.active) { background:#fff; color:#6b7280; }
+    .filter-chip:not(.active):hover { border-color:#5038A6; color:#5038A6; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+
+    <main class="flex-1 p-6 space-y-5">
+
+      <!-- Title -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-gray-800">프로젝트 목록</h1>
+          <p class="text-sm text-gray-500 mt-0.5">전체 프로젝트 현황을 조회하고 관리하세요.</p>
+        </div>
+        <button onclick="openModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;">
+          <i class="fa-solid fa-plus text-xs"></i> 프로젝트 등록
+        </button>
+      </div>
+
+      <!-- 요약 카드 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(80,56,166,0.1);">
+            <i class="fa-solid fa-folder-open text-sm" style="color:#5038A6;"></i>
+          </div>
+          <div><p class="text-2xl font-bold text-gray-800" id="cntTotal">0</p><p class="text-xs text-gray-500">전체 프로젝트</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50">
+            <i class="fa-solid fa-play text-sm text-blue-500"></i>
+          </div>
+          <div><p class="text-2xl font-bold text-gray-800" id="cntActive">0</p><p class="text-xs text-gray-500">진행 중</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-50">
+            <i class="fa-solid fa-circle-check text-sm text-emerald-500"></i>
+          </div>
+          <div><p class="text-2xl font-bold text-gray-800" id="cntDone">0</p><p class="text-xs text-gray-500">완료</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50">
+            <i class="fa-solid fa-triangle-exclamation text-sm text-red-500"></i>
+          </div>
+          <div><p class="text-2xl font-bold text-gray-800" id="cntDelay">0</p><p class="text-xs text-gray-500">지연</p></div>
+        </div>
+      </div>
+
+      <!-- 필터 + 뷰 전환 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[180px] max-w-xs">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+          <input type="text" id="searchInput" placeholder="프로젝트명 또는 PM 검색..." oninput="applyFilter()"
+            class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+        </div>
+        <div class="flex gap-1.5 flex-wrap">
+          <button class="filter-chip active" data-val="all" onclick="setFilter('all',this)">전체</button>
+          <button class="filter-chip" data-val="진행중" onclick="setFilter('진행중',this)">진행 중</button>
+          <button class="filter-chip" data-val="완료" onclick="setFilter('완료',this)">완료</button>
+          <button class="filter-chip" data-val="지연" onclick="setFilter('지연',this)">지연</button>
+          <button class="filter-chip" data-val="계획" onclick="setFilter('계획',this)">계획</button>
+          <button class="filter-chip" data-val="보류" onclick="setFilter('보류',this)">보류</button>
+        </div>
+        <div class="flex items-center gap-1 ml-auto">
+          <button class="view-btn active" id="btnCard" onclick="setView('card')"><i class="fa-solid fa-grip text-sm"></i></button>
+          <button class="view-btn" id="btnList" onclick="setView('list')"><i class="fa-solid fa-list text-sm"></i></button>
+        </div>
+        <span class="text-xs text-gray-400" id="rowCount"></span>
+      </div>
+
+      <!-- 카드 뷰 -->
+      <div id="cardView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" ></div>
+
+      <!-- 리스트 뷰 -->
+      <div id="listView" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">프로젝트명</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">상태</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">우선순위</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">PM</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500">기간</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-32">진척도</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-16">인원</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">액션</th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+        </table>
+        <div id="listEmpty" class="hidden py-16 text-center">
+          <i class="fa-solid fa-folder-open text-gray-300 text-3xl block mb-3"></i>
+          <p class="text-sm text-gray-400">프로젝트가 없습니다</p>
+        </div>
+      </div>
+
+      <div id="cardEmpty" class="hidden py-20 text-center">
+        <i class="fa-solid fa-folder-open text-gray-300 text-4xl block mb-3"></i>
+        <p class="text-sm text-gray-400">조건에 맞는 프로젝트가 없습니다</p>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 프로젝트 상세/등록 모달 -->
+  <div id="projectModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="modalTitle">프로젝트 등록</h2>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <!-- 프로젝트명 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">프로젝트명 <span class="text-red-400">*</span></label>
+          <input type="text" id="mName" placeholder="프로젝트명을 입력하세요"
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition">
+        </div>
+        <!-- 설명 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">프로젝트 설명</label>
+          <textarea id="mDesc" rows="2" placeholder="프로젝트 목적 및 개요..."
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none transition"></textarea>
+        </div>
+        <!-- 상태 + 우선순위 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">상태 <span class="text-red-400">*</span></label>
+            <select id="mStatus" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="계획">계획</option>
+              <option value="진행중">진행 중</option>
+              <option value="완료">완료</option>
+              <option value="지연">지연</option>
+              <option value="보류">보류</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">우선순위</label>
+            <select id="mPriority" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="높음">높음</option>
+              <option value="보통" selected>보통</option>
+              <option value="낮음">낮음</option>
+            </select>
+          </div>
+        </div>
+        <!-- PM + 부서 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">PM <span class="text-red-400">*</span></label>
+            <input type="text" id="mPm" placeholder="담당 PM"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">담당 부서</label>
+            <input type="text" id="mDept" placeholder="부서명"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+        </div>
+        <!-- 기간 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">시작일 <span class="text-red-400">*</span></label>
+            <input type="date" id="mStart" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">종료 예정일 <span class="text-red-400">*</span></label>
+            <input type="date" id="mEnd" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+        </div>
+        <!-- 예산 + 진척도 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">예산 (만원)</label>
+            <input type="number" id="mBudget" placeholder="0" min="0"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">진척도 (%)</label>
+            <div class="flex items-center gap-2">
+              <input type="range" id="mProgress" min="0" max="100" value="0"
+                oninput="document.getElementById('mProgressVal').textContent=this.value+'%'"
+                class="flex-1" style="accent-color:#5038A6;">
+              <span class="text-xs font-bold text-purple-600 w-8 text-right" id="mProgressVal">0%</span>
+            </div>
+          </div>
+        </div>
+        <!-- 팀원 (태그 입력) -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">팀원</label>
+          <div class="flex flex-wrap gap-1.5 p-2 border border-gray-200 rounded-lg min-h-[40px]" id="memberTags"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" id="memberInput" placeholder="이름 입력 후 Enter"
+              class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"
+              onkeydown="addMember(event)">
+            <button onclick="addMember({key:'Enter'})" class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:border-purple-400 text-gray-500 hover:text-purple-600 transition">추가</button>
+          </div>
+        </div>
+        <!-- 태그 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">태그</label>
+          <input type="text" id="mTags" placeholder="태그 입력 (쉼표 구분)"
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white">
+        <button id="deleteBtn" onclick="deleteProject()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition">
+          <i class="fa-regular fa-trash-can"></i> 삭제
+        </button>
+        <div class="flex gap-2 ml-auto">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
+          <button onclick="saveProject()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;">
+            <i class="fa-solid fa-floppy-disk text-xs"></i> 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    // ── 데이터 ──
+    let projects = [
+      { id:1, name:'ERP 고도화 프로젝트',       desc:'기존 ERP 시스템의 모듈 고도화 및 UX 개선',          status:'진행중', priority:'높음', pm:'김철수', dept:'IT기획팀',   start:'2026-01-06', end:'2026-06-30', budget:15000, progress:48, members:['김철수','이영희','박민준','정하늘'], tags:['ERP','고도화','UX'] },
+      { id:2, name:'모바일 앱 리뉴얼',           desc:'iOS/Android 앱 전면 리디자인 및 기능 확장',         status:'지연',   priority:'높음', pm:'이영희', dept:'모바일팀',   start:'2026-02-01', end:'2026-05-31', budget:8000,  progress:32, members:['이영희','최수연','나현재'],          tags:['모바일','iOS','Android'] },
+      { id:3, name:'데이터 분석 플랫폼',         desc:'빅데이터 기반 실시간 분석 플랫폼 구축',             status:'진행중', priority:'높음', pm:'박민준', dept:'데이터팀',   start:'2026-02-15', end:'2026-08-15', budget:20000, progress:25, members:['박민준','정하늘','김철수'],          tags:['빅데이터','분석','플랫폼'] },
+      { id:4, name:'인프라 클라우드 전환',       desc:'온프레미스 인프라를 AWS 기반 클라우드로 전환',       status:'지연',   priority:'높음', pm:'최수연', dept:'인프라팀',   start:'2026-01-15', end:'2026-04-30', budget:12000, progress:35, members:['최수연','나현재'],                   tags:['AWS','클라우드','인프라'] },
+      { id:5, name:'사내 교육 플랫폼',           desc:'온라인 사내 교육 시스템 개발',                      status:'완료',   priority:'보통', pm:'나현재', dept:'HR팀',      start:'2025-10-01', end:'2026-01-31', budget:5000,  progress:100,members:['나현재','이영희'],                  tags:['교육','LMS'] },
+      { id:6, name:'보안 시스템 강화',           desc:'제로트러스트 기반 보안 체계 구축',                  status:'완료',   priority:'높음', pm:'정하늘', dept:'보안팀',    start:'2025-11-01', end:'2026-02-28', budget:9000,  progress:100,members:['정하늘','최수연'],                  tags:['보안','ZeroTrust'] },
+      { id:7, name:'챗봇 CS 자동화',             desc:'AI 기반 고객센터 챗봇 도입',                        status:'계획',   priority:'보통', pm:'이영희', dept:'CS팀',      start:'2026-04-01', end:'2026-09-30', budget:7000,  progress:0,  members:['이영희','박민준'],                   tags:['AI','챗봇','CS'] },
+      { id:8, name:'결제 시스템 고도화',         desc:'PG 연동 및 결제 프로세스 개선',                     status:'보류',   priority:'낮음', pm:'김철수', dept:'결제팀',    start:'2026-05-01', end:'2026-10-31', budget:11000, progress:0,  members:['김철수'],                            tags:['결제','PG'] },
+    ];
+    let nextId = 9;
+    let editId = null;
+    let currentFilter = 'all';
+    let currentView = 'card';
+    let memberList = [];
+
+    const statusCfg = {
+      '진행중': { text:'text-blue-700',    bg:'bg-blue-50',    border:'border-blue-200',    dot:'bg-blue-400',    accent:'#3b82f6' },
+      '완료':   { text:'text-emerald-700', bg:'bg-emerald-50', border:'border-emerald-200', dot:'bg-emerald-400', accent:'#10b981' },
+      '지연':   { text:'text-red-700',     bg:'bg-red-50',     border:'border-red-200',     dot:'bg-red-400',     accent:'#ef4444' },
+      '계획':   { text:'text-gray-600',    bg:'bg-gray-100',   border:'border-gray-200',    dot:'bg-gray-400',    accent:'#9ca3af' },
+      '보류':   { text:'text-amber-700',   bg:'bg-amber-50',   border:'border-amber-200',   dot:'bg-amber-400',   accent:'#f59e0b' },
+    };
+    const priorityCfg = {
+      '높음': { color:'text-red-600',    bg:'bg-red-50',    border:'border-red-200' },
+      '보통': { color:'text-amber-600',  bg:'bg-amber-50',  border:'border-amber-200' },
+      '낮음': { color:'text-gray-500',   bg:'bg-gray-100',  border:'border-gray-200' },
+    };
+    const progressColor = p => p >= 80 ? '#10b981' : p >= 50 ? '#5038A6' : p >= 30 ? '#f59e0b' : '#ef4444';
+    const avatarColors = ['#5038A6','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
+
+    function getFiltered() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      return projects.filter(p => {
+        if (currentFilter !== 'all' && p.status !== currentFilter) return false;
+        if (search && !p.name.toLowerCase().includes(search) && !p.pm.toLowerCase().includes(search)) return false;
+        return true;
+      });
+    }
+
+    // ── 카드 뷰 ──
+    function renderCards() {
+      const filtered = getFiltered();
+      const cardView = document.getElementById('cardView');
+      const cardEmpty = document.getElementById('cardEmpty');
+      updateCounts();
+      document.getElementById('rowCount').textContent = `총 ${filtered.length}건`;
+
+      if (!filtered.length) { cardView.innerHTML=''; cardEmpty.classList.remove('hidden'); return; }
+      cardEmpty.classList.add('hidden');
+
+      cardView.innerHTML = filtered.map(p => {
+        const sc = statusCfg[p.status] || statusCfg['계획'];
+        const pc = priorityCfg[p.priority] || priorityCfg['보통'];
+        const bc = progressColor(p.progress);
+        const daysLeft = Math.ceil((new Date(p.end) - new Date()) / 86400000);
+        const daysLabel = daysLeft < 0 ? `<span class="text-red-500">${Math.abs(daysLeft)}일 초과</span>` : daysLeft === 0 ? '<span class="text-red-500">오늘 마감</span>' : `<span class="text-gray-500">${daysLeft}일 남음</span>`;
+
+        return `<div class="card-hover bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer" onclick="openModal('view', ${p.id})">
+          <!-- 상단 색상 바 -->
+          <div class="h-1.5" style="background:${sc.accent};"></div>
+          <div class="p-5">
+            <!-- 헤더 -->
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-gray-800 text-sm leading-tight truncate">${p.name}</h3>
+                <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${p.desc}</p>
+              </div>
+              <span class="status-badge flex-shrink-0 ${sc.bg} ${sc.text} ${sc.border}">
+                <span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${p.status}
+              </span>
+            </div>
+            <!-- 진척도 -->
+            <div class="mb-3">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs text-gray-500">진척도</span>
+                <span class="text-xs font-bold" style="color:${bc};">${p.progress}%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-bar-fill" style="width:${p.progress}%;background:${bc};"></div></div>
+            </div>
+            <!-- 메타 정보 -->
+            <div class="flex items-center gap-3 text-xs text-gray-500 mb-3">
+              <span class="flex items-center gap-1"><i class="fa-solid fa-user text-gray-400 text-xs"></i>${p.pm}</span>
+              <span class="flex items-center gap-1"><i class="fa-regular fa-calendar text-gray-400 text-xs"></i>${p.end}</span>
+              <span class="ml-auto text-xs font-medium">${daysLabel}</span>
+            </div>
+            <!-- 팀원 아바타 + 우선순위 + 예산 -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                ${p.members.slice(0,4).map((m,i) => `<div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white" style="background:${avatarColors[i%8]};margin-left:${i>0?'-6px':'0'};" title="${m}">${m[0]}</div>`).join('')}
+                ${p.members.length > 4 ? `<div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 font-bold border-2 border-white" style="margin-left:-6px;">+${p.members.length-4}</div>` : ''}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded-md font-medium border ${pc.color} ${pc.bg} ${pc.border}">${p.priority}</span>
+                ${p.budget ? `<span class="text-xs text-gray-400">${(p.budget/10000).toFixed(0)}억</span>` : ''}
+              </div>
+            </div>
+            <!-- 태그 -->
+            ${p.tags && p.tags.length ? `<div class="flex flex-wrap gap-1 mt-3">${p.tags.slice(0,3).map(t=>`<span class="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-500">#${t}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── 리스트 뷰 ──
+    function renderListView() {
+      const filtered = getFiltered();
+      const tbody = document.getElementById('listBody');
+      const empty = document.getElementById('listEmpty');
+      updateCounts();
+      document.getElementById('rowCount').textContent = `총 ${filtered.length}건`;
+
+      if (!filtered.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+
+      tbody.innerHTML = filtered.map(p => {
+        const sc = statusCfg[p.status] || statusCfg['계획'];
+        const pc = priorityCfg[p.priority] || priorityCfg['보통'];
+        const bc = progressColor(p.progress);
+        return `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer" onclick="openModal('view', ${p.id})">
+          <td class="px-4 py-3">
+            <p class="font-semibold text-gray-800 text-sm">${p.name}</p>
+            <p class="text-xs text-gray-400 truncate max-w-[200px]">${p.desc}</p>
+          </td>
+          <td class="px-4 py-3">
+            <span class="status-badge ${sc.bg} ${sc.text} ${sc.border}">
+              <span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${p.status}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-0.5 rounded-md font-medium border ${pc.color} ${pc.bg} ${pc.border}">${p.priority}</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700">${p.pm}</td>
+          <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">${p.start} ~ ${p.end}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="progress-bar w-20"><div class="progress-bar-fill" style="width:${p.progress}%;background:${bc};"></div></div>
+              <span class="text-xs font-bold" style="color:${bc};">${p.progress}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center">
+              ${p.members.slice(0,3).map((m,i)=>`<div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white" style="background:${avatarColors[i%8]};${i>0?'margin-left:-6px;':''}" title="${m}">${m[0]}</div>`).join('')}
+              ${p.members.length>3?`<span class="text-xs text-gray-400 ml-1">+${p.members.length-3}</span>`:''}
+            </div>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <button onclick="event.stopPropagation(); openModal('edit', ${p.id})" class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition">
+              <i class="fa-regular fa-pen-to-square text-xs"></i>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function updateCounts() {
+      document.getElementById('cntTotal').textContent  = projects.length;
+      document.getElementById('cntActive').textContent = projects.filter(p=>p.status==='진행중').length;
+      document.getElementById('cntDone').textContent   = projects.filter(p=>p.status==='완료').length;
+      document.getElementById('cntDelay').textContent  = projects.filter(p=>p.status==='지연').length;
+    }
+
+    function render() {
+      if (currentView === 'card') { renderCards(); } else { renderListView(); }
+    }
+
+    function applyFilter() { render(); }
+
+    function setFilter(val, el) {
+      currentFilter = val;
+      document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      render();
+    }
+
+    function setView(v) {
+      currentView = v;
+      document.getElementById('cardView').classList.toggle('hidden', v !== 'card');
+      document.getElementById('listView').classList.toggle('hidden', v !== 'list');
+      document.getElementById('cardEmpty').classList.add('hidden');
+      document.getElementById('btnCard').classList.toggle('active', v === 'card');
+      document.getElementById('btnList').classList.toggle('active', v === 'list');
+      render();
+    }
+
+    // ── 모달 ──
+    function openModal(mode, id = null) {
+      editId = (mode !== 'create') ? id : null;
+      memberList = [];
+      document.getElementById('projectModal').classList.remove('hidden');
+
+      if (mode === 'create') {
+        document.getElementById('modalTitle').textContent = '프로젝트 등록';
+        document.getElementById('deleteBtn').classList.add('hidden');
+        clearForm();
+      } else {
+        const p = projects.find(x => x.id === id);
+        if (!p) return;
+        document.getElementById('modalTitle').textContent = mode === 'edit' ? '프로젝트 수정' : p.name;
+        document.getElementById('deleteBtn').classList.toggle('hidden', mode !== 'edit');
+        document.getElementById('mName').value     = p.name;
+        document.getElementById('mDesc').value     = p.desc;
+        document.getElementById('mStatus').value   = p.status;
+        document.getElementById('mPriority').value = p.priority;
+        document.getElementById('mPm').value       = p.pm;
+        document.getElementById('mDept').value     = p.dept;
+        document.getElementById('mStart').value    = p.start;
+        document.getElementById('mEnd').value      = p.end;
+        document.getElementById('mBudget').value   = p.budget;
+        document.getElementById('mProgress').value = p.progress;
+        document.getElementById('mProgressVal').textContent = p.progress + '%';
+        document.getElementById('mTags').value     = (p.tags || []).join(', ');
+        memberList = [...p.members];
+        renderMemberTags();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('projectModal').classList.add('hidden');
+      editId = null;
+    }
+
+    function clearForm() {
+      ['mName','mDesc','mPm','mDept','mBudget','mTags'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('mStatus').value   = '계획';
+      document.getElementById('mPriority').value = '보통';
+      const today = new Date().toISOString().slice(0,10);
+      document.getElementById('mStart').value    = today;
+      document.getElementById('mEnd').value      = today;
+      document.getElementById('mProgress').value = '0';
+      document.getElementById('mProgressVal').textContent = '0%';
+      memberList = [];
+      renderMemberTags();
+    }
+
+    function addMember(e) {
+      if (e.key !== 'Enter') return;
+      const input = document.getElementById('memberInput');
+      const name = input.value.trim();
+      if (!name || memberList.includes(name)) { input.value=''; return; }
+      memberList.push(name);
+      input.value = '';
+      renderMemberTags();
+    }
+
+    function removeMember(name) {
+      memberList = memberList.filter(m => m !== name);
+      renderMemberTags();
+    }
+
+    function renderMemberTags() {
+      document.getElementById('memberTags').innerHTML = memberList.map(m =>
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+          ${m}
+          <button type="button" onclick="removeMember('${m}')" class="hover:text-red-500 ml-0.5">×</button>
+        </span>`
+      ).join('');
+    }
+
+    function saveProject() {
+      const name = document.getElementById('mName').value.trim();
+      const pm   = document.getElementById('mPm').value.trim();
+      if (!name || !pm) { alert('프로젝트명과 PM은 필수입니다.'); return; }
+      const tagsRaw = document.getElementById('mTags').value;
+      const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
+      const data = {
+        name, pm,
+        desc:     document.getElementById('mDesc').value,
+        status:   document.getElementById('mStatus').value,
+        priority: document.getElementById('mPriority').value,
+        dept:     document.getElementById('mDept').value,
+        start:    document.getElementById('mStart').value,
+        end:      document.getElementById('mEnd').value,
+        budget:   parseInt(document.getElementById('mBudget').value) || 0,
+        progress: parseInt(document.getElementById('mProgress').value),
+        members:  [...memberList],
+        tags,
+      };
+      if (editId) {
+        const idx = projects.findIndex(p => p.id === editId);
+        if (idx > -1) projects[idx] = { ...projects[idx], ...data };
+      } else {
+        projects.push({ id: nextId++, ...data });
+      }
+      closeModal();
+      render();
+    }
+
+    function deleteProject() {
+      if (!confirm('이 프로젝트를 삭제하시겠습니까?')) return;
+      projects = projects.filter(p => p.id !== editId);
+      closeModal();
+      render();
+    }
+
+    // ── Init ──
+    render();
+  </script>
+</body>
+</html>

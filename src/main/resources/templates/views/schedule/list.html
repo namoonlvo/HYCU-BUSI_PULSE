@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 개인 일정 관리</title>
+  <style>
+    .status-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:500; border-width:1px; }
+    .delay-row { background:rgba(239,68,68,0.03); }
+    .priority-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .filter-chip { padding:6px 12px; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; border-width:1px; }
+    .filter-chip.active { background:#5038A6; color:#fff; border-color:#5038A6; }
+    .filter-chip:not(.active) { background:#fff; color:#6b7280; border-color:#e5e7eb; }
+    .filter-chip:not(.active):hover { border-color:#5038A6; color:#5038A6; }
+    .progress-mini { height:4px; border-radius:2px; background:#e5e7eb; overflow:hidden; }
+    .progress-mini-bar { height:100%; border-radius:2px; transition:width 0.4s; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+
+    <main class="flex-1 p-6 space-y-5">
+
+      <!-- Page Title -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-gray-800">개인 일정 관리</h1>
+          <p class="text-sm text-gray-500 mt-0.5">나의 일정을 등록하고 진척 상황 및 지연 사유를 관리하세요.</p>
+        </div>
+        <button onclick="openModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-sm hover:shadow-md" style="background:#5038A6;">
+          <i class="fa-solid fa-plus text-xs"></i> 일정 등록
+        </button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(80,56,166,0.1);">
+            <i class="fa-solid fa-calendar-days text-sm" style="color:#5038A6;"></i>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-gray-800" id="cntAll">14</p>
+            <p class="text-xs text-gray-500">전체 일정</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50">
+            <i class="fa-solid fa-spinner text-sm text-blue-500"></i>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-gray-800" id="cntProgress">0</p>
+            <p class="text-xs text-gray-500">진행 중</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-50">
+            <i class="fa-solid fa-circle-check text-sm text-emerald-500"></i>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-gray-800" id="cntDone">0</p>
+            <p class="text-xs text-gray-500">완료</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50">
+            <i class="fa-solid fa-triangle-exclamation text-sm text-red-500"></i>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-gray-800" id="cntDelay">0</p>
+            <p class="text-xs text-gray-500">지연</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative flex-1 min-w-[180px] max-w-xs">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <input type="text" id="searchInput" placeholder="일정명 검색..." oninput="filterTable()"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition">
+          </div>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <i class="fa-regular fa-calendar text-gray-400 text-xs"></i>
+            <input type="date" id="dateFrom" onchange="filterTable()" class="px-2 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+            <span class="text-gray-400 text-xs">~</span>
+            <input type="date" id="dateTo" onchange="filterTable()" class="px-2 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button class="filter-chip active" data-value="all" onclick="setStatusFilter('all', this)">전체</button>
+            <button class="filter-chip" data-value="진행중" onclick="setStatusFilter('진행중', this)">진행 중</button>
+            <button class="filter-chip" data-value="완료" onclick="setStatusFilter('완료', this)">완료</button>
+            <button class="filter-chip" data-value="지연" onclick="setStatusFilter('지연', this)">지연</button>
+            <button class="filter-chip" data-value="예정" onclick="setStatusFilter('예정', this)">예정</button>
+          </div>
+          <select id="typeFilter" onchange="filterTable()" class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+            <option value="">유형 전체</option>
+            <option value="프로젝트">프로젝트</option>
+            <option value="개인">개인</option>
+            <option value="미팅">미팅</option>
+            <option value="휴가">휴가</option>
+            <option value="마감">마감</option>
+          </select>
+          <button onclick="resetFilter()" class="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg hover:border-red-300 transition">
+            <i class="fa-solid fa-rotate-left text-xs"></i> 초기화
+          </button>
+          <span class="ml-auto text-xs text-gray-400" id="rowCount"></span>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="px-4 py-3 w-8">
+                <input type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" class="rounded border-gray-300">
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer hover:text-gray-700" onclick="sortTable('title')">
+                일정명 <i class="fa-solid fa-sort text-gray-300 ml-1 text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">유형</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28 cursor-pointer hover:text-gray-700" onclick="sortTable('start')">
+                시작일 <i class="fa-solid fa-sort text-gray-300 ml-1 text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28 cursor-pointer hover:text-gray-700" onclick="sortTable('end')">
+                종료일 <i class="fa-solid fa-sort text-gray-300 ml-1 text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28">진척도</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-20">상태</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-28">관련 프로젝트</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-16">액션</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="emptyState" class="hidden py-20 text-center">
+          <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+            <i class="fa-solid fa-calendar-xmark text-gray-400 text-2xl"></i>
+          </div>
+          <p class="text-sm font-medium text-gray-500">검색 결과가 없습니다</p>
+          <p class="text-xs text-gray-400 mt-1">다른 조건으로 검색해 보세요</p>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500">페이지 <span id="currentPage">1</span> / <span id="totalPage">1</span></p>
+        <div class="flex gap-1" id="paginationBtns"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- ===== 일정 등록/수정 모달 ===== -->
+  <div id="scheduleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="modalTitle">일정 등록</h2>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <!-- 일정명 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">일정명 <span class="text-red-400">*</span></label>
+          <input type="text" id="mTitle" placeholder="일정명을 입력하세요"
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition">
+        </div>
+        <!-- 유형 + 우선순위 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">유형 <span class="text-red-400">*</span></label>
+            <select id="mType" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="프로젝트">프로젝트</option>
+              <option value="개인">개인</option>
+              <option value="미팅">미팅</option>
+              <option value="휴가">휴가</option>
+              <option value="마감">마감</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">우선순위</label>
+            <select id="mPriority" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="높음">높음</option>
+              <option value="보통" selected>보통</option>
+              <option value="낮음">낮음</option>
+            </select>
+          </div>
+        </div>
+        <!-- 기간 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">시작일 <span class="text-red-400">*</span></label>
+            <input type="date" id="mStart" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">종료일 <span class="text-red-400">*</span></label>
+            <input type="date" id="mEnd" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+          </div>
+        </div>
+        <!-- 관련 프로젝트 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">관련 프로젝트</label>
+          <select id="mProject" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+            <option value="">선택 안함</option>
+            <option value="ERP 고도화 프로젝트">ERP 고도화 프로젝트</option>
+            <option value="모바일 앱 리뉴얼">모바일 앱 리뉴얼</option>
+            <option value="데이터 분석 플랫폼">데이터 분석 플랫폼</option>
+            <option value="인프라 클라우드 전환">인프라 클라우드 전환</option>
+          </select>
+        </div>
+        <!-- 진척도 + 상태 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">진척도 (%)</label>
+            <div class="flex items-center gap-2">
+              <input type="range" id="mProgress" min="0" max="100" value="0"
+                oninput="document.getElementById('mProgressVal').textContent = this.value + '%'"
+                class="flex-1" style="accent-color:#5038A6;">
+              <span class="text-xs font-semibold text-purple-600 w-8 text-right" id="mProgressVal">0%</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">상태 <span class="text-red-400">*</span></label>
+            <select id="mStatus" onchange="toggleDelaySection()" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
+              <option value="예정">예정</option>
+              <option value="진행중">진행 중</option>
+              <option value="완료">완료</option>
+              <option value="지연">지연</option>
+              <option value="취소">취소</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 지연 섹션 -->
+        <div id="delaySection" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p class="text-xs font-semibold text-red-600 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> 지연 정보 입력
+          </p>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">지연 사유 <span class="text-red-400">*</span></label>
+            <select id="mDelayReason" class="w-full px-3 py-2 text-sm rounded-lg border border-red-200 focus:outline-none focus:border-red-400 bg-white">
+              <option value="">사유 선택</option>
+              <option value="리소스 부족">리소스 부족</option>
+              <option value="요구사항 변경">요구사항 변경</option>
+              <option value="외부 의존성">외부 의존성 (타 팀/부서)</option>
+              <option value="기술적 이슈">기술적 이슈</option>
+              <option value="일정 과부하">일정 과부하</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">상세 내용</label>
+            <textarea id="mDelayDetail" rows="2" placeholder="지연에 대한 상세 내용을 입력하세요..."
+              class="w-full px-3 py-2 text-sm rounded-lg border border-red-200 focus:outline-none focus:border-red-400 resize-none bg-white"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">예상 완료일 (재조정)</label>
+            <input type="date" id="mDelayNewEnd" class="w-full px-3 py-2 text-sm rounded-lg border border-red-200 focus:outline-none focus:border-red-400 bg-white">
+          </div>
+        </div>
+
+        <!-- 기타 메모 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">기타 메모</label>
+          <textarea id="mMemo" rows="3" placeholder="추가 메모나 참고 사항을 입력하세요..."
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition resize-none"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white">
+        <button id="deleteBtn" onclick="deleteSchedule()" class="hidden items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition">
+          <i class="fa-regular fa-trash-can"></i> 삭제
+        </button>
+        <div class="flex gap-2 ml-auto">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
+          <button onclick="saveSchedule()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition shadow-sm hover:shadow" style="background:#5038A6;">
+            <i class="fa-solid fa-floppy-disk text-xs"></i> 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 지연 사유 빠른 입력 모달 ===== -->
+  <div id="delayModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeDelayModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i> 지연 사유 입력
+        </h2>
+        <button onclick="closeDelayModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-gray-600 font-medium" id="delayTargetTitle"></p>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">지연 사유 <span class="text-red-400">*</span></label>
+          <select id="quickDelayReason" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-red-400">
+            <option value="">사유 선택</option>
+            <option value="리소스 부족">리소스 부족</option>
+            <option value="요구사항 변경">요구사항 변경</option>
+            <option value="외부 의존성">외부 의존성 (타 팀/부서)</option>
+            <option value="기술적 이슈">기술적 이슈</option>
+            <option value="일정 과부하">일정 과부하</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">상세 내용</label>
+          <textarea id="quickDelayDetail" rows="3" placeholder="상세 내용을 입력하세요..."
+            class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-red-400 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">재조정 완료 예정일</label>
+          <input type="date" id="quickDelayNewEnd" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-red-400">
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <button onclick="closeDelayModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button>
+        <button onclick="saveDelayReason()" class="px-5 py-2 text-sm font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 transition">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    // ── 데이터 ──
+    let schedules = [
+      { id:1,  title:'ERP 모듈 요구사항 분석',     type:'프로젝트', start:'2026-03-01', end:'2026-03-15', progress:100, status:'완료',   project:'ERP 고도화 프로젝트',  priority:'높음', memo:'완료 보고 제출', delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:2,  title:'UI/UX 프로토타입 검토',       type:'미팅',     start:'2026-03-10', end:'2026-03-10', progress:100, status:'완료',   project:'모바일 앱 리뉴얼',     priority:'보통', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:3,  title:'데이터 파이프라인 설계',      type:'프로젝트', start:'2026-03-12', end:'2026-03-28', progress:65,  status:'진행중', project:'데이터 분석 플랫폼',   priority:'높음', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:4,  title:'클라우드 마이그레이션 계획',  type:'프로젝트', start:'2026-03-05', end:'2026-03-20', progress:30,  status:'지연',   project:'인프라 클라우드 전환', priority:'높음', memo:'',             delayReason:'기술적 이슈',   delayDetail:'AWS IAM 권한 설정 지연', delayNewEnd:'2026-03-30' },
+      { id:5,  title:'분기 성과 보고서 작성',       type:'개인',     start:'2026-03-18', end:'2026-03-25', progress:50,  status:'진행중', project:'',                     priority:'보통', memo:'팀장 제출용',  delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:6,  title:'신규 입사자 온보딩 지원',     type:'개인',     start:'2026-03-17', end:'2026-03-21', progress:80,  status:'진행중', project:'',                     priority:'낮음', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:7,  title:'스프린트 회고 미팅',          type:'미팅',     start:'2026-03-21', end:'2026-03-21', progress:0,   status:'예정',   project:'ERP 고도화 프로젝트',  priority:'보통', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:8,  title:'연차 휴가',                   type:'휴가',     start:'2026-03-24', end:'2026-03-25', progress:0,   status:'예정',   project:'',                     priority:'낮음', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:9,  title:'API 연동 테스트',             type:'프로젝트', start:'2026-03-03', end:'2026-03-18', progress:20,  status:'지연',   project:'모바일 앱 리뉴얼',     priority:'높음', memo:'',             delayReason:'외부 의존성',   delayDetail:'백엔드 팀 API 미완성', delayNewEnd:'2026-03-28' },
+      { id:10, title:'보안 취약점 점검',            type:'프로젝트', start:'2026-03-14', end:'2026-03-20', progress:100, status:'완료',   project:'인프라 클라우드 전환', priority:'높음', memo:'결과 공유됨',  delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:11, title:'팀 기술 세미나 준비',         type:'개인',     start:'2026-03-25', end:'2026-03-28', progress:10,  status:'진행중', project:'',                     priority:'보통', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:12, title:'Q1 결산 마감',               type:'마감',     start:'2026-03-31', end:'2026-03-31', progress:0,   status:'예정',   project:'',                     priority:'높음', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+      { id:13, title:'모바일 앱 QA 검수',           type:'프로젝트', start:'2026-03-08', end:'2026-03-22', progress:45,  status:'지연',   project:'모바일 앱 리뉴얼',     priority:'높음', memo:'',             delayReason:'리소스 부족',   delayDetail:'QA 담당자 2명 부재', delayNewEnd:'2026-03-31' },
+      { id:14, title:'데이터 시각화 대시보드 개발', type:'프로젝트', start:'2026-03-20', end:'2026-04-05', progress:15,  status:'진행중', project:'데이터 분석 플랫폼',   priority:'높음', memo:'',             delayReason:'', delayDetail:'', delayNewEnd:'' },
+    ];
+    let nextId = 15;
+    let statusFilter = 'all';
+    let sortCol = 'start', sortDir = 1;
+    let currentPage = 1;
+    const PAGE_SIZE = 10;
+    let currentEditId = null;
+    let quickDelayId = null;
+
+    // ── 설정 ──
+    const typeConfig = {
+      '프로젝트': { color:'#5038A6', bg:'rgba(80,56,166,0.1)', icon:'fa-diagram-project' },
+      '개인':     { color:'#3b82f6', bg:'rgba(59,130,246,0.1)', icon:'fa-user' },
+      '미팅':     { color:'#10b981', bg:'rgba(16,185,129,0.1)', icon:'fa-users' },
+      '휴가':     { color:'#f59e0b', bg:'rgba(245,158,11,0.1)', icon:'fa-umbrella-beach' },
+      '마감':     { color:'#ef4444', bg:'rgba(239,68,68,0.1)', icon:'fa-flag' },
+    };
+    const statusConfig = {
+      '완료':   { text:'text-emerald-700', bg:'bg-emerald-50', border:'border-emerald-200', dot:'bg-emerald-400' },
+      '진행중': { text:'text-blue-700',    bg:'bg-blue-50',    border:'border-blue-200',    dot:'bg-blue-400' },
+      '지연':   { text:'text-red-700',     bg:'bg-red-50',     border:'border-red-200',     dot:'bg-red-400' },
+      '예정':   { text:'text-gray-600',    bg:'bg-gray-100',   border:'border-gray-200',    dot:'bg-gray-400' },
+      '취소':   { text:'text-gray-400',    bg:'bg-gray-50',    border:'border-gray-200',    dot:'bg-gray-300' },
+    };
+    const priorityDot = { '높음':'bg-red-400', '보통':'bg-amber-400', '낮음':'bg-gray-300' };
+    const progressColor = p => p >= 80 ? '#10b981' : p >= 50 ? '#5038A6' : p >= 30 ? '#f59e0b' : '#ef4444';
+
+    // ── 필터 ──
+    function getFiltered() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo   = document.getElementById('dateTo').value;
+      const type     = document.getElementById('typeFilter').value;
+      return schedules.filter(s => {
+        if (search && !s.title.toLowerCase().includes(search)) return false;
+        if (dateFrom && s.end < dateFrom) return false;
+        if (dateTo   && s.start > dateTo)  return false;
+        if (type && s.type !== type) return false;
+        if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+        return true;
+      }).sort((a, b) => {
+        let av = sortCol === 'progress' ? a[sortCol] : (a[sortCol] ?? '');
+        let bv = sortCol === 'progress' ? b[sortCol] : (b[sortCol] ?? '');
+        return av < bv ? -sortDir : av > bv ? sortDir : 0;
+      });
+    }
+
+    function filterTable() { currentPage = 1; renderTable(); }
+
+    function setStatusFilter(val, el) {
+      statusFilter = val;
+      document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      filterTable();
+    }
+
+    function resetFilter() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('dateFrom').value = '';
+      document.getElementById('dateTo').value = '';
+      document.getElementById('typeFilter').value = '';
+      statusFilter = 'all';
+      document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      document.querySelector('.filter-chip[data-value="all"]').classList.add('active');
+      filterTable();
+    }
+
+    function sortTable(col) {
+      if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+      renderTable();
+    }
+
+    // ── 렌더 ──
+    function renderTable() {
+      const filtered = getFiltered();
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      const slice = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+      // 요약 카드 업데이트
+      document.getElementById('cntAll').textContent = schedules.length;
+      document.getElementById('cntProgress').textContent = schedules.filter(s => s.status === '진행중').length;
+      document.getElementById('cntDone').textContent = schedules.filter(s => s.status === '완료').length;
+      document.getElementById('cntDelay').textContent = schedules.filter(s => s.status === '지연').length;
+
+      document.getElementById('rowCount').textContent = `총 ${total}건`;
+      document.getElementById('currentPage').textContent = currentPage;
+      document.getElementById('totalPage').textContent = totalPages;
+
+      const tbody  = document.getElementById('tableBody');
+      const empty  = document.getElementById('emptyState');
+
+      if (slice.length === 0) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        renderPagination(totalPages);
+        return;
+      }
+      empty.classList.add('hidden');
+
+      tbody.innerHTML = slice.map(s => {
+        const tc = typeConfig[s.type] || typeConfig['개인'];
+        const sc = statusConfig[s.status] || statusConfig['예정'];
+        const pc = progressColor(s.progress);
+        const isDelay = s.status === '지연';
+
+        const endCell = isDelay && s.delayNewEnd
+          ? `<span class="line-through text-gray-400 mr-1">${s.end}</span><span class="font-semibold text-red-500">${s.delayNewEnd}</span>`
+          : `<span class="${isDelay ? 'text-red-500 font-medium' : 'text-gray-600'}">${s.end}</span>`;
+
+        const delayInfo = isDelay
+          ? (s.delayReason
+              ? `<div class="flex items-center gap-1 mt-1 flex-wrap">
+                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-red-100 text-red-600 font-medium">
+                     <i class="fa-solid fa-triangle-exclamation text-xs"></i>${s.delayReason}
+                   </span>
+                   ${s.delayDetail ? `<span class="text-xs text-gray-400 truncate max-w-xs">${s.delayDetail}</span>` : ''}
+                 </div>`
+              : `<button onclick="openDelayModal(${s.id})" class="mt-1 text-xs text-red-500 hover:text-red-700 flex items-center gap-1 underline underline-offset-2">
+                   <i class="fa-solid fa-plus text-xs"></i> 지연 사유 입력
+                 </button>`)
+          : '';
+
+        return `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors${isDelay ? ' delay-row' : ''}" data-id="${s.id}">
+          <td class="px-4 py-3"><input type="checkbox" class="row-check rounded border-gray-300"></td>
+          <td class="px-4 py-3">
+            <div class="flex items-start gap-2">
+              <span class="priority-dot mt-1.5 ${priorityDot[s.priority] || 'bg-gray-300'}" title="${s.priority} 우선순위"></span>
+              <div>
+                <p class="font-medium text-gray-800 text-sm leading-tight">${s.title}</p>
+                ${s.memo ? `<p class="text-xs text-gray-400 mt-0.5">${s.memo}</p>` : ''}
+                ${delayInfo}
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium" style="background:${tc.bg};color:${tc.color};">
+              <i class="fa-solid ${tc.icon} text-xs"></i>${s.type}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">${s.start}</td>
+          <td class="px-4 py-3 text-xs whitespace-nowrap">${endCell}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="progress-mini w-16"><div class="progress-mini-bar" style="width:${s.progress}%;background:${pc};"></div></div>
+              <span class="text-xs font-semibold" style="color:${pc};">${s.progress}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="status-badge ${sc.bg} ${sc.text} ${sc.border}">
+              <span class="w-1.5 h-1.5 rounded-full ${sc.dot}"></span>${s.status}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-gray-500 max-w-[100px]"><span class="truncate block">${s.project || '—'}</span></td>
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-center gap-0.5">
+              <button onclick="openModal('edit', ${s.id})" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition" title="수정">
+                <i class="fa-regular fa-pen-to-square text-xs"></i>
+              </button>
+              ${isDelay ? `<button onclick="openDelayModal(${s.id})" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="지연 사유">
+                <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+              </button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(total) {
+      const el = document.getElementById('paginationBtns');
+      let html = '';
+      for (let i=1; i<=total; i++) {
+        const active = i === currentPage;
+        html += `<button onclick="goPage(${i})" class="w-8 h-8 text-xs font-medium rounded-lg transition ${active ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 border border-gray-200'}" ${active ? 'style="background:#5038A6;"' : ''}>${i}</button>`;
+      }
+      el.innerHTML = html;
+    }
+
+    function goPage(p) { currentPage = p; renderTable(); }
+
+    // ── 모달 ──
+    function openModal(mode, id = null) {
+      currentEditId = id;
+      document.getElementById('scheduleModal').classList.remove('hidden');
+      if (mode === 'create') {
+        document.getElementById('modalTitle').textContent = '일정 등록';
+        document.getElementById('deleteBtn').classList.add('hidden');
+        clearModal();
+      } else {
+        document.getElementById('modalTitle').textContent = '일정 수정';
+        document.getElementById('deleteBtn').classList.remove('hidden');
+        const s = schedules.find(x => x.id === id);
+        if (!s) return;
+        document.getElementById('mTitle').value       = s.title;
+        document.getElementById('mType').value        = s.type;
+        document.getElementById('mPriority').value    = s.priority;
+        document.getElementById('mStart').value       = s.start;
+        document.getElementById('mEnd').value         = s.end;
+        document.getElementById('mProject').value     = s.project;
+        document.getElementById('mProgress').value    = s.progress;
+        document.getElementById('mProgressVal').textContent = s.progress + '%';
+        document.getElementById('mStatus').value      = s.status;
+        document.getElementById('mMemo').value        = s.memo;
+        document.getElementById('mDelayReason').value = s.delayReason;
+        document.getElementById('mDelayDetail').value = s.delayDetail;
+        document.getElementById('mDelayNewEnd').value = s.delayNewEnd;
+        toggleDelaySection();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('scheduleModal').classList.add('hidden');
+      currentEditId = null;
+    }
+
+    function clearModal() {
+      ['mTitle','mMemo','mDelayDetail','mDelayNewEnd'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('mType').value     = '프로젝트';
+      document.getElementById('mPriority').value = '보통';
+      document.getElementById('mStatus').value   = '예정';
+      document.getElementById('mProject').value  = '';
+      document.getElementById('mDelayReason').value = '';
+      document.getElementById('mProgress').value = '0';
+      document.getElementById('mProgressVal').textContent = '0%';
+      document.getElementById('delaySection').classList.add('hidden');
+      const today = new Date().toISOString().slice(0,10);
+      document.getElementById('mStart').value = today;
+      document.getElementById('mEnd').value   = today;
+    }
+
+    function toggleDelaySection() {
+      const isDelay = document.getElementById('mStatus').value === '지연';
+      document.getElementById('delaySection').classList.toggle('hidden', !isDelay);
+    }
+
+    function saveSchedule() {
+      const title = document.getElementById('mTitle').value.trim();
+      if (!title) { alert('일정명을 입력하세요.'); return; }
+      const data = {
+        title,
+        type:        document.getElementById('mType').value,
+        priority:    document.getElementById('mPriority').value,
+        start:       document.getElementById('mStart').value,
+        end:         document.getElementById('mEnd').value,
+        project:     document.getElementById('mProject').value,
+        progress:    parseInt(document.getElementById('mProgress').value),
+        status:      document.getElementById('mStatus').value,
+        memo:        document.getElementById('mMemo').value,
+        delayReason: document.getElementById('mDelayReason').value,
+        delayDetail: document.getElementById('mDelayDetail').value,
+        delayNewEnd: document.getElementById('mDelayNewEnd').value,
+      };
+      if (currentEditId) {
+        const idx = schedules.findIndex(s => s.id === currentEditId);
+        if (idx > -1) schedules[idx] = { ...schedules[idx], ...data };
+      } else {
+        schedules.push({ id: nextId++, ...data });
+      }
+      closeModal();
+      renderTable();
+    }
+
+    function deleteSchedule() {
+      if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+      schedules = schedules.filter(s => s.id !== currentEditId);
+      closeModal();
+      renderTable();
+    }
+
+    // ── 지연 빠른 입력 모달 ──
+    function openDelayModal(id) {
+      quickDelayId = id;
+      const s = schedules.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('delayTargetTitle').textContent = '📌 ' + s.title;
+      document.getElementById('quickDelayReason').value = s.delayReason || '';
+      document.getElementById('quickDelayDetail').value = s.delayDetail || '';
+      document.getElementById('quickDelayNewEnd').value = s.delayNewEnd || '';
+      document.getElementById('delayModal').classList.remove('hidden');
+    }
+
+    function closeDelayModal() {
+      document.getElementById('delayModal').classList.add('hidden');
+      quickDelayId = null;
+    }
+
+    function saveDelayReason() {
+      const reason = document.getElementById('quickDelayReason').value;
+      if (!reason) { alert('지연 사유를 선택하세요.'); return; }
+      const idx = schedules.findIndex(s => s.id === quickDelayId);
+      if (idx > -1) {
+        schedules[idx].status      = '지연';
+        schedules[idx].delayReason = reason;
+        schedules[idx].delayDetail = document.getElementById('quickDelayDetail').value;
+        schedules[idx].delayNewEnd = document.getElementById('quickDelayNewEnd').value;
+      }
+      closeDelayModal();
+      renderTable();
+    }
+
+    // ── 체크박스 전체 선택 ──
+    function toggleCheckAll(el) {
+      document.querySelectorAll('.row-check').forEach(c => c.checked = el.checked);
+    }
+
+    // ── 초기화 ──
+    renderTable();
+  </script>
+</body>
+</html>

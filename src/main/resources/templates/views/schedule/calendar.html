@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 통합 캘린더</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <style>
+    .fc { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
+    .fc-toolbar-title { font-size: 1.05rem !important; font-weight: 700 !important; color: #111827; }
+    .fc-button-primary {
+      background-color: #5038A6 !important; border-color: #5038A6 !important;
+      border-radius: 10px !important; font-size: 0.78rem !important;
+      padding: 5px 12px !important; font-weight: 500 !important; box-shadow: none !important;
+    }
+    .fc-button-primary:hover  { background-color: #3D2A85 !important; border-color: #3D2A85 !important; }
+    .fc-button-active         { background-color: #3D2A85 !important; border-color: #3D2A85 !important; }
+    .fc-col-header-cell       { background: #f9fafb; border-color: #f3f4f6 !important; }
+    .fc-col-header-cell-cushion { font-size: 0.73rem; font-weight: 600; color: #6b7280; padding: 8px 4px; text-decoration: none !important; }
+    .fc-daygrid-day-number    { font-size: 0.78rem; color: #374151; text-decoration: none !important; padding: 5px 8px; }
+    .fc-day-today             { background-color: #F0ECFF !important; }
+    .fc-day-today .fc-daygrid-day-number { color: #5038A6 !important; font-weight: 700; }
+    .fc-event                 { border-radius: 6px !important; border: none !important; font-size: 0.73rem !important; padding: 2px 5px !important; font-weight: 500 !important; cursor: pointer; }
+    .fc-daygrid-event-harness { margin: 1px 2px !important; }
+    .fc-scrollgrid            { border-color: #f3f4f6 !important; }
+    .fc-scrollgrid td, .fc-scrollgrid th { border-color: #f3f4f6 !important; }
+    .fc-daygrid-day:hover     { background-color: #fafbff; cursor: pointer; }
+    .fc-toolbar               { margin-bottom: 1rem !important; }
+    .event-project  { background-color: #5038A6 !important; }
+    .event-personal { background-color: #60a5fa !important; }
+    .event-leave    { background-color: #fbbf24 !important; color: #78350f !important; }
+    .event-meeting  { background-color: #34d399 !important; color: #064e3b !important; }
+    .event-deadline { background-color: #f87171 !important; }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+
+  <div id="main-wrapper" class="min-h-screen flex flex-col">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+
+    <main class="flex-1 px-6 py-6 overflow-auto">
+
+      <!-- ── 타이틀 ── -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-xl font-bold text-gray-900">통합 캘린더</h1>
+          <p class="text-sm text-gray-400 mt-0.5">프로젝트·개인 일정·휴가·회의를 한눈에</p>
+        </div>
+        <button onclick="openAddModal()"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-600 transition-colors shadow-sm">
+          <i class="fa-solid fa-plus text-xs"></i>일정 등록
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-4 gap-5">
+
+        <!-- ── 캘린더 본체 ── -->
+        <div class="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-card p-5">
+          <div id="calendar"></div>
+        </div>
+
+        <!-- ── 우측 패널 ── -->
+        <div class="flex flex-col gap-4">
+
+          <!-- 범례 -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-4">
+            <h3 class="text-sm font-bold text-gray-800 mb-3">일정 구분</h3>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2.5 text-sm text-gray-600"><span class="w-3 h-3 rounded-full bg-brand flex-shrink-0"></span>프로젝트 일정</div>
+              <div class="flex items-center gap-2.5 text-sm text-gray-600"><span class="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></span>개인 일정</div>
+              <div class="flex items-center gap-2.5 text-sm text-gray-600"><span class="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0"></span>휴가/외근</div>
+              <div class="flex items-center gap-2.5 text-sm text-gray-600"><span class="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0"></span>회의</div>
+              <div class="flex items-center gap-2.5 text-sm text-gray-600"><span class="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></span>마감/D-Day</div>
+            </div>
+          </div>
+
+          <!-- 이번달 요약 -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-4">
+            <h3 class="text-sm font-bold text-gray-800 mb-3">이번달 요약</h3>
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">전체</span><span class="font-bold text-gray-800">24건</span></div>
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">프로젝트</span><span class="font-bold text-brand">8건</span></div>
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">개인</span><span class="font-bold text-blue-500">7건</span></div>
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">휴가/외근</span><span class="font-bold text-amber-500">4건</span></div>
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">회의</span><span class="font-bold text-emerald-500">5건</span></div>
+            </div>
+          </div>
+
+          <!-- 오늘의 일정 -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-card p-4 flex-1">
+            <h3 class="text-sm font-bold text-gray-800 mb-3">오늘의 일정</h3>
+            <div id="today-events" class="space-y-2"></div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="overlay" class="fixed inset-0 z-20" style="display:none;" onclick="closeAllPanels()"></div>
+
+  <!-- ══ 일정 등록/상세 모달 ══ -->
+  <div id="event-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeEventModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10">
+
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 id="modal-title" class="text-base font-bold text-gray-900">일정 등록</h2>
+        <button onclick="closeEventModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+
+        <!-- 유형 선택 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">일정 유형</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button type="button" data-type="project"  onclick="selectType(this)"
+              class="type-btn py-2 rounded-xl text-xs font-semibold border-2 border-brand bg-brand-50 text-brand transition-all">프로젝트</button>
+            <button type="button" data-type="personal" onclick="selectType(this)"
+              class="type-btn py-2 rounded-xl text-xs font-semibold border-2 border-gray-200 text-gray-400 transition-all">개인</button>
+            <button type="button" data-type="leave"    onclick="selectType(this)"
+              class="type-btn py-2 rounded-xl text-xs font-semibold border-2 border-gray-200 text-gray-400 transition-all">휴가/외근</button>
+            <button type="button" data-type="meeting"  onclick="selectType(this)"
+              class="type-btn py-2 rounded-xl text-xs font-semibold border-2 border-gray-200 text-gray-400 transition-all">회의</button>
+          </div>
+          <input type="hidden" id="event-type" value="project"/>
+        </div>
+
+        <!-- 일정명 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">일정명 <span class="text-red-400">*</span></label>
+          <input type="text" id="event-title" placeholder="일정 제목을 입력하세요"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition-all"/>
+        </div>
+
+        <!-- 날짜 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">시작일 <span class="text-red-400">*</span></label>
+            <input type="date" id="event-start"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition-all"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">종료일</label>
+            <input type="date" id="event-end"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition-all"/>
+          </div>
+        </div>
+
+        <!-- 관련 프로젝트 -->
+        <div id="field-project">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">관련 프로젝트</label>
+          <select class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition-all">
+            <option value="">-- 선택 --</option>
+            <option>ERP 고도화 프로젝트</option>
+            <option>모바일 앱 UX 개선</option>
+            <option>인사 시스템 구축</option>
+            <option>고객 포털 리뉴얼</option>
+          </select>
+        </div>
+
+        <!-- 메모 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">메모</label>
+          <textarea id="event-memo" rows="2" placeholder="관련 내용을 입력하세요"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition-all"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100">
+        <button onclick="closeEventModal()" class="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">취소</button>
+        <button onclick="saveEvent()"       class="px-5 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-600 transition-colors">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    const EVENTS = [
+      { id:1,  title:'ERP 고도화 킥오프',        start:'2026-03-03', classNames:['event-project'],  type:'project'  },
+      { id:2,  title:'모바일 UX 스프린트',         start:'2026-03-05', end:'2026-03-12', classNames:['event-project'],  type:'project'  },
+      { id:3,  title:'주간 팀 회의',              start:'2026-03-10', classNames:['event-meeting'],  type:'meeting'  },
+      { id:4,  title:'김지훈 연차',               start:'2026-03-13', end:'2026-03-14', classNames:['event-leave'],    type:'leave'    },
+      { id:5,  title:'인사 시스템 요구사항 리뷰',  start:'2026-03-17', classNames:['event-meeting'],  type:'meeting'  },
+      { id:6,  title:'ERP 마감 D-Day',           start:'2026-03-28', classNames:['event-deadline'], type:'deadline' },
+      { id:7,  title:'고객 포털 QA',             start:'2026-03-19', end:'2026-03-21', classNames:['event-project'],  type:'project'  },
+      { id:8,  title:'개인 독서 스터디',           start:'2026-03-06', classNames:['event-personal'], type:'personal' },
+      { id:9,  title:'보안 취약점 점검',           start:'2026-03-24', end:'2026-03-25', classNames:['event-project'],  type:'project'  },
+      { id:10, title:'이수진 외근 (고객사)',        start:'2026-03-18', classNames:['event-leave'],    type:'leave'    },
+      { id:11, title:'월간 성과 보고',             start:'2026-03-31', classNames:['event-meeting'],  type:'meeting'  },
+      { id:12, title:'데이터 분석 플랫폼 착수',     start:'2026-03-25', end:'2026-03-27', classNames:['event-project'],  type:'project'  },
+    ];
+
+    const TYPE_STYLE = {
+      project:  'border-brand bg-brand-50 text-brand',
+      personal: 'border-blue-400 bg-blue-50 text-blue-500',
+      leave:    'border-amber-400 bg-amber-50 text-amber-600',
+      meeting:  'border-emerald-400 bg-emerald-50 text-emerald-600',
+    };
+    const TYPE_DOT = {
+      project:'bg-brand', personal:'bg-blue-400', leave:'bg-amber-400', meeting:'bg-emerald-400', deadline:'bg-red-400'
+    };
+
+    /* 오늘 일정 렌더 */
+    function renderTodayEvents() {
+      const today = new Date().toISOString().slice(0, 10);
+      const list  = EVENTS.filter(e => e.start <= today && (!e.end || e.end >= today));
+      const el    = document.getElementById('today-events');
+      if (!list.length) {
+        el.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">오늘 일정이 없습니다.</p>';
+        return;
+      }
+      el.innerHTML = list.map(e => `
+        <div class="flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+          <span class="w-2 h-2 rounded-full ${TYPE_DOT[e.type]||'bg-gray-400'} mt-1.5 flex-shrink-0"></span>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-800 truncate">${e.title}</p>
+            <p class="text-xs text-gray-400 mt-0.5">${e.start}${e.end && e.end !== e.start ? ' ~ ' + e.end : ''}</p>
+          </div>
+        </div>`).join('');
+    }
+
+    /* FullCalendar 초기화 */
+    document.addEventListener('DOMContentLoaded', () => {
+      renderTodayEvents();
+      const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'dayGridMonth',
+        locale: 'ko',
+        headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,listWeek' },
+        buttonText: { today:'오늘', month:'월', week:'주', list:'목록' },
+        height: 'auto',
+        events: EVENTS,
+        eventClick(info) { openDetailModal(info.event); },
+        dateClick(info)  { openAddModal(info.dateStr); },
+      });
+      calendar.render();
+    });
+
+    /* 모달 */
+    function openAddModal(dateStr = '') {
+      document.getElementById('modal-title').textContent = '일정 등록';
+      document.getElementById('event-title').value = '';
+      document.getElementById('event-start').value = dateStr;
+      document.getElementById('event-end').value   = dateStr;
+      document.getElementById('event-memo').value  = '';
+      selectType(document.querySelector('[data-type="project"]'));
+      document.getElementById('event-modal').classList.remove('hidden');
+    }
+
+    function openDetailModal(event) {
+      document.getElementById('modal-title').textContent = '일정 상세';
+      document.getElementById('event-title').value = event.title;
+      document.getElementById('event-start').value = event.startStr.slice(0,10);
+      document.getElementById('event-end').value   = event.endStr ? event.endStr.slice(0,10) : event.startStr.slice(0,10);
+      document.getElementById('event-modal').classList.remove('hidden');
+    }
+
+    function closeEventModal() {
+      document.getElementById('event-modal').classList.add('hidden');
+    }
+
+    function selectType(btn) {
+      const type = btn.dataset.type;
+      document.getElementById('event-type').value = type;
+      document.querySelectorAll('.type-btn').forEach(b => {
+        b.className = 'type-btn py-2 rounded-xl text-xs font-semibold border-2 border-gray-200 text-gray-400 transition-all';
+      });
+      btn.className = `type-btn py-2 rounded-xl text-xs font-semibold border-2 ${TYPE_STYLE[type] || TYPE_STYLE.project} transition-all`;
+      document.getElementById('field-project').style.display = (type === 'project') ? '' : 'none';
+    }
+
+    function saveEvent() {
+      const title = document.getElementById('event-title').value.trim();
+      const start = document.getElementById('event-start').value;
+      if (!title || !start) { alert('일정명과 시작일은 필수입니다.'); return; }
+      closeEventModal();
+      // TODO: API 연동
+    }
+  </script>
+
+</body>
+</html>

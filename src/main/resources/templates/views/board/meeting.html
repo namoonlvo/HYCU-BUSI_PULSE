@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 회의록</title>
+  <style>
+    .filter-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #e5e7eb;}
+    .filter-chip.active{background:#5038A6;color:#fff;border-color:#5038A6;}
+    .filter-chip:not(.active){background:#fff;color:#6b7280;}
+    .filter-chip:not(.active):hover{border-color:#5038A6;color:#5038A6;}
+    .meeting-card{transition:all .2s;cursor:pointer;}
+    .meeting-card:hover{box-shadow:0 6px 18px rgba(80,56,166,.1);border-color:#c4b5fd;}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+  <div id="main-wrapper" class="min-h-screen flex flex-col transition-all duration-300">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+    <main class="flex-1 p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h1 class="text-xl font-bold text-gray-800">회의록</h1><p class="text-sm text-gray-500 mt-0.5">회의 내용 및 결정 사항을 기록하고 공유하세요.</p></div>
+        <button onclick="openModal('create')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all" style="background:#5038A6;"><i class="fa-solid fa-plus text-xs"></i> 회의록 작성</button>
+      </div>
+
+      <!-- 필터 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[160px] max-w-xs"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i><input type="text" id="searchInput" placeholder="회의명 또는 작성자..." oninput="render()" class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+        <select id="projFilter" onchange="render()" class="px-3 py-2 text-xs rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="">프로젝트 전체</option><option>ERP 고도화 프로젝트</option><option>모바일 앱 리뉴얼</option><option>데이터 분석 플랫폼</option><option>인프라 클라우드 전환</option></select>
+        <div class="flex gap-1.5">
+          <button class="filter-chip active" data-val="all" onclick="setFilter('all',this)">전체</button>
+          <button class="filter-chip" data-val="스프린트" onclick="setFilter('스프린트',this)">스프린트</button>
+          <button class="filter-chip" data-val="킥오프" onclick="setFilter('킥오프',this)">킥오프</button>
+          <button class="filter-chip" data-val="회고" onclick="setFilter('회고',this)">회고</button>
+          <button class="filter-chip" data-val="기타" onclick="setFilter('기타',this)">기타</button>
+        </div>
+        <span class="ml-auto text-xs text-gray-400" id="rowCount"></span>
+      </div>
+
+      <!-- 카드 목록 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="cardGrid"></div>
+      <div id="cardEmpty" class="hidden py-20 text-center"><i class="fa-solid fa-comments text-gray-300 text-4xl block mb-3"></i><p class="text-sm text-gray-400">회의록이 없습니다</p></div>
+    </main>
+  </div>
+  <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
+
+  <!-- 모달 -->
+  <div id="meetingModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800" id="modalTitle">회의록 작성</h2>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="px-6 py-5 space-y-4" id="modalBody"></div>
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center sticky bottom-0 bg-white" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script>
+    let meetings=[
+      {id:1, title:'ERP 스프린트 3 킥오프',         type:'킥오프',  project:'ERP 고도화 프로젝트', date:'2026-03-21', time:'10:00', place:'2층 회의실 A', participants:['김철수','이영희','박민준','정하늘'], author:'김철수', agenda:'스프린트 3 목표 설정, 역할 분배, 일정 조율', content:'1. 스프린트 3 목표: 프론트엔드 60% 완성, API 50% 완성\n2. 역할 분배: 정하늘-UI, 박민준-API, 나현재-테스트\n3. 회의 주기: 매주 화요일 10:00', action:'- 각 담당자 세부 일정 2026-03-24까지 공유\n- Jira 태스크 생성 (김철수)'},
+      {id:2, title:'모바일 앱 API 지연 대응 회의',   type:'기타',    project:'모바일 앱 리뉴얼',    date:'2026-03-18', time:'14:00', place:'화상 회의',    participants:['이영희','최수연','나현재'],       author:'이영희', agenda:'API 연동 지연 원인 파악 및 대응 방안 수립', content:'1. 원인: 백엔드 팀 인력 부족으로 API 개발 지연\n2. 대응: Mock API 활용하여 프론트 선행 개발\n3. 재조정 마감: 3월 28일', action:'- Mock API 셋업 (나현재, 3/20)\n- 백엔드 팀 일정 재협의 (이영희, 3/19)'},
+      {id:3, title:'데이터 플랫폼 아키텍처 검토',    type:'기타',    project:'데이터 분석 플랫폼',  date:'2026-03-15', time:'15:00', place:'3층 회의실 B', participants:['박민준','정하늘','김철수'],         author:'박민준', agenda:'플랫폼 아키텍처 최종 확정', content:'Kafka + Spark + Elasticsearch 구성으로 최종 확정.\n데이터 수집 → 처리 → 시각화 파이프라인 설계 완료.', action:'- 아키텍처 문서화 (박민준, 3/20)\n- AWS 비용 견적 산출 (최수연, 3/22)'},
+      {id:4, title:'1분기 스프린트 회고',             type:'회고',    project:'ERP 고도화 프로젝트', date:'2026-03-14', time:'16:00', place:'2층 회의실 A', participants:['전팀원'],                          author:'김철수', agenda:'1분기 성과 회고 및 2분기 개선 방향 논의', content:'잘된 점: 요구사항 분석 및 설계 일정 준수\n개선점: 코드 리뷰 프로세스 강화 필요\n2분기 목표: 테스트 커버리지 80% 달성', action:'- 코드 리뷰 가이드 작성 (이영희)\n- 테스트 자동화 도구 도입 검토 (박민준)'},
+      {id:5, title:'클라우드 전환 진행 현황 보고',   type:'기타',    project:'인프라 클라우드 전환',date:'2026-03-10', time:'11:00', place:'임원 회의실', participants:['최수연','나현재','팀장'],           author:'최수연', agenda:'클라우드 전환 진행 현황 보고 및 이슈 공유', content:'진행률: 35% (목표 대비 지연)\n이슈: IAM 권한 설정 복잡도 증가\n재조정 완료 예정일: 4월 30일', action:'- IAM 정책 전문가 자문 요청 (나현재)\n- 주간 보고 자료 준비 (최수연)'},
+      {id:6, title:'전체 팀 월간 회의',               type:'기타',    project:'',                    date:'2026-03-07', time:'09:30', place:'대회의실',    participants:['전팀원'],                          author:'경영지원팀', agenda:'3월 업무 현황 공유 및 이슈 논의', content:'각 프로젝트 PM 3월 현황 발표 완료. 주요 리스크: 모바일 앱 API 지연, 클라우드 IAM 이슈.', action:'- 각 PM 주간 상황 보고 강화\n- 리스크 관리 매트릭스 업데이트'},
+    ];
+    let nextId=7, editId=null, currentFilter='all';
+    const typeColor={'킥오프':'text-purple-600 bg-purple-50 border-purple-200','스프린트':'text-blue-600 bg-blue-50 border-blue-200','회고':'text-amber-600 bg-amber-50 border-amber-200','기타':'text-gray-600 bg-gray-100 border-gray-200'};
+    const avatarColors=['#5038A6','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'];
+
+    function getFiltered(){
+      const s=document.getElementById('searchInput').value.toLowerCase();
+      const proj=document.getElementById('projFilter').value;
+      return meetings.filter(m=>{
+        if(currentFilter!=='all'&&m.type!==currentFilter)return false;
+        if(s&&!m.title.toLowerCase().includes(s)&&!m.author.toLowerCase().includes(s))return false;
+        if(proj&&m.project!==proj)return false;
+        return true;
+      }).sort((a,b)=>b.date.localeCompare(a.date));
+    }
+
+    function render(){
+      const filtered=getFiltered();
+      document.getElementById('rowCount').textContent=`총 ${filtered.length}건`;
+      const grid=document.getElementById('cardGrid'),empty=document.getElementById('cardEmpty');
+      if(!filtered.length){grid.innerHTML='';empty.classList.remove('hidden');return;}
+      empty.classList.add('hidden');
+      grid.innerHTML=filtered.map(m=>{
+        const tc=typeColor[m.type]||typeColor['기타'];
+        return`<div class="meeting-card bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3" onclick="openModal('view',${m.id})">
+          <div class="flex items-start justify-between gap-2">
+            <div><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${tc}">${m.type}</span></div>
+            <span class="text-xs text-gray-400">${m.date}</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-800 text-sm leading-tight">${m.title}</h3>
+            ${m.project?`<p class="text-xs text-gray-400 mt-1">${m.project}</p>`:''}
+          </div>
+          <p class="text-xs text-gray-500 line-clamp-2">${m.agenda}</p>
+          <div class="border-t border-gray-50 pt-3 flex items-center justify-between">
+            <div class="flex items-center gap-1">
+              ${m.participants.slice(0,4).map((p,i)=>`<div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white" style="background:${avatarColors[i%6]};${i>0?'margin-left:-4px':''}" title="${p}">${p[0]}</div>`).join('')}
+              ${m.participants.length>4?`<span class="text-xs text-gray-400 ml-1">+${m.participants.length-4}</span>`:''}
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-400">
+              <i class="fa-regular fa-clock"></i><span>${m.time}</span>
+              <i class="fa-solid fa-location-dot"></i><span class="truncate max-w-[60px]">${m.place}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function setFilter(val,el){currentFilter=val;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));el.classList.add('active');render();}
+
+    function openModal(mode,id=null){
+      editId=(mode!=='create')?id:null;
+      document.getElementById('meetingModal').classList.remove('hidden');
+      const footer=document.getElementById('modalFooter');
+      if(mode==='view'){
+        const m=meetings.find(x=>x.id===id);if(!m)return;
+        const tc=typeColor[m.type]||typeColor['기타'];
+        document.getElementById('modalTitle').textContent='회의록 상세';
+        document.getElementById('modalBody').innerHTML=`
+          <div class="flex items-center gap-2"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${tc}">${m.type}</span><span class="text-xs text-gray-400">${m.date} ${m.time} · ${m.place}</span></div>
+          <h3 class="text-lg font-bold text-gray-800">${m.title}</h3>
+          ${m.project?`<p class="text-xs text-gray-500">프로젝트: <strong>${m.project}</strong></p>`:''}
+          <div class="border-t border-b border-gray-100 py-3">
+            <p class="text-xs font-semibold text-gray-500 mb-2">참석자</p>
+            <div class="flex flex-wrap gap-1.5">${m.participants.map((p,i)=>`<span class="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700"><span class="w-4 h-4 rounded-full text-white flex items-center justify-center font-bold text-xs" style="background:${avatarColors[i%6]};">${p[0]}</span>${p}</span>`).join('')}</div>
+          </div>
+          <div><p class="text-xs font-semibold text-gray-500 mb-1.5">안건</p><p class="text-sm text-gray-700">${m.agenda}</p></div>
+          <div><p class="text-xs font-semibold text-gray-500 mb-1.5">회의 내용</p><div class="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3">${m.content}</div></div>
+          ${m.action?`<div><p class="text-xs font-semibold text-gray-500 mb-1.5">Action Items</p><div class="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-amber-50 border border-amber-100 rounded-lg p-3">${m.action}</div></div>`:''}`;
+        footer.innerHTML=`<button onclick="openModal('edit',${m.id})" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-purple-300 hover:text-purple-600 transition"><i class="fa-regular fa-pen-to-square text-xs"></i> 수정</button><button onclick="closeModal()" class="ml-auto px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">닫기</button>`;
+      }else{
+        const m=mode==='edit'?meetings.find(x=>x.id===id):null;
+        document.getElementById('modalTitle').textContent=mode==='create'?'회의록 작성':'회의록 수정';
+        document.getElementById('modalBody').innerHTML=`
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">회의 유형</label><select id="mType" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option>킥오프</option><option>스프린트</option><option>회고</option><option>기타</option></select></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">관련 프로젝트</label><select id="mProject" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"><option value="">없음</option><option>ERP 고도화 프로젝트</option><option>모바일 앱 리뉴얼</option><option>데이터 분석 플랫폼</option><option>인프라 클라우드 전환</option></select></div>
+          </div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">회의명 <span class="text-red-400">*</span></label><input type="text" id="mTitle" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition"></div>
+          <div class="grid grid-cols-3 gap-3">
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">날짜</label><input type="date" id="mDate" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">시간</label><input type="time" id="mTime" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">장소</label><input type="text" id="mPlace" placeholder="회의실명" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+          </div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">참석자 (쉼표 구분)</label><input type="text" id="mParticipants" placeholder="김철수, 이영희, ..." class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">안건</label><input type="text" id="mAgenda" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400"></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">회의 내용 <span class="text-red-400">*</span></label><textarea id="mContent" rows="5" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none transition"></textarea></div>
+          <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">Action Items</label><textarea id="mAction" rows="3" placeholder="- 담당자: 작업 내용 (마감일)" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400 resize-none transition"></textarea></div>`;
+        if(m){
+          document.getElementById('mType').value=m.type;document.getElementById('mProject').value=m.project;
+          document.getElementById('mTitle').value=m.title;document.getElementById('mDate').value=m.date;
+          document.getElementById('mTime').value=m.time;document.getElementById('mPlace').value=m.place;
+          document.getElementById('mParticipants').value=m.participants.join(', ');
+          document.getElementById('mAgenda').value=m.agenda;document.getElementById('mContent').value=m.content;
+          document.getElementById('mAction').value=m.action||'';
+        }else{document.getElementById('mDate').value=new Date().toISOString().slice(0,10);}
+        footer.innerHTML=`${mode==='edit'?`<button onclick="deleteMeeting()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-regular fa-trash-can"></i> 삭제</button>`:''}
+          <div class="flex gap-2 ml-auto"><button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">취소</button><button onclick="saveMeeting()" class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-sm hover:shadow transition" style="background:#5038A6;"><i class="fa-solid fa-floppy-disk text-xs"></i> 저장</button></div>`;
+      }
+    }
+    function closeModal(){document.getElementById('meetingModal').classList.add('hidden');editId=null;}
+    function saveMeeting(){
+      const title=document.getElementById('mTitle').value.trim();
+      const content=document.getElementById('mContent').value.trim();
+      if(!title||!content){alert('회의명과 내용을 입력하세요.');return;}
+      const parts=document.getElementById('mParticipants').value.split(',').map(p=>p.trim()).filter(Boolean);
+      const data={type:document.getElementById('mType').value,project:document.getElementById('mProject').value,title,date:document.getElementById('mDate').value,time:document.getElementById('mTime').value,place:document.getElementById('mPlace').value,participants:parts.length?parts:['나'],agenda:document.getElementById('mAgenda').value,content,action:document.getElementById('mAction').value,author:'나'};
+      if(editId){const i=meetings.findIndex(m=>m.id===editId);if(i>-1)meetings[i]={...meetings[i],...data};}
+      else meetings.push({id:nextId++,...data});
+      closeModal();render();
+    }
+    function deleteMeeting(){if(!confirm('삭제하시겠습니까?'))return;meetings=meetings.filter(m=>m.id!==editId);closeModal();render();}
+    render();
+  </script>
+</body>
+</html>
