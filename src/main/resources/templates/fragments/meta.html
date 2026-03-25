@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="meta">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_parameter" th:content="${_csrf.parameterName}"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind 커스텀 설정 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              DEFAULT: '#5038A6',
+              50:  '#F0ECFF',
+              100: '#E0D8FF',
+              200: '#C2B2FF',
+              300: '#A38BFF',
+              400: '#7F62D1',
+              500: '#5038A6',
+              600: '#3D2A85',
+              700: '#2C1E64',
+              800: '#1C1243',
+              900: '#0D0822',
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
+          },
+          boxShadow: {
+            'card':       '0 1px 3px 0 rgba(0,0,0,.07), 0 1px 2px -1px rgba(0,0,0,.07)',
+            'card-hover': '0 4px 16px 0 rgba(80,56,166,.15)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- 공통 CSS -->
+  <link rel="stylesheet" th:href="@{/css/common.css}" />
+</th:block>
+</html>

@@ -1,1 +1,168 @@
-/* 공통 css */
+/* ── 전역 기본 ── */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans KR', sans-serif;
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ── 사이드바 ── */
+#sidebar {
+  width: 260px;
+  transition: width .25s ease;
+}
+
+#sidebar.collapsed {
+  width: 70px;
+}
+
+#sidebar.collapsed .nav-label,
+#sidebar.collapsed .section-label,
+#sidebar.collapsed .logo-text,
+#sidebar.collapsed .submenu-arrow {
+  display: none;
+}
+
+#sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+#sidebar.collapsed .nav-icon {
+  margin-right: 0;
+}
+
+#sidebar.collapsed .submenu {
+  display: none !important;
+}
+
+#sidebar.collapsed .has-submenu>.nav-item {
+  pointer-events: none;
+}
+
+/* ── 서브메뉴 애니메이션 ── */
+.submenu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .3s ease;
+}
+
+.submenu.open {
+  max-height: 500px;
+}
+
+/* ── 회전 화살표 ── */
+.submenu-arrow {
+  transition: transform .25s ease;
+}
+
+.has-submenu.open>.nav-item .submenu-arrow {
+  transform: rotate(90deg);
+}
+
+/* ── 활성 메뉴 ── */
+.nav-item.active {
+  background: rgba(255, 255, 255, .12);
+}
+
+.nav-item.active .nav-icon {
+  color: #fff;
+}
+
+.nav-item.active .nav-label {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── 메인 전환 ── */
+#main-wrapper {
+  transition: margin-left .25s ease;
+  margin-left: 260px;
+}
+
+#main-wrapper.collapsed {
+  margin-left: 70px;
+}
+
+/* ── 카드 호버 ── */
+.summary-card {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(80, 56, 166, .18);
+}
+
+/* ── 진행률 바 ── */
+.progress-bar {
+  height: 6px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: #e5e7eb;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width .4s ease;
+}
+
+/* ── 뱃지 ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+/* ── 테이블 행 호버 ── */
+tbody tr {
+  transition: background .12s;
+}
+
+tbody tr:hover {
+  background: #f8f7ff;
+}
+
+/* ── 알림/프로필 드롭다운 ── */
+#notification-panel {
+  display: none;
+}
+
+#notification-panel.show {
+  display: block;
+}
+
+#profile-panel {
+  display: none;
+}
+
+#profile-panel.show {
+  display: block;
+}

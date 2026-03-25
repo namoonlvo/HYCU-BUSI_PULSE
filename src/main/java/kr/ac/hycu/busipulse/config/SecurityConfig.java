@@ -44,7 +44,7 @@ public class SecurityConfig {
             .formLogin(form -> form
                 .loginPage("/login")
                 .loginProcessingUrl("/login")
-                .defaultSuccessUrl("/", true)
+                .defaultSuccessUrl("/dashboard/main", true)
                 .failureUrl("/login?error")
                 .permitAll()
             )
@@ -52,6 +52,11 @@ public class SecurityConfig {
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout")
                 .permitAll()
+            )
+            .sessionManagement(session -> session
+                .invalidSessionUrl("/login?expired")
+                .maximumSessions(1)
+                .expiredUrl("/login?expired")
             );
 
         return http.build();

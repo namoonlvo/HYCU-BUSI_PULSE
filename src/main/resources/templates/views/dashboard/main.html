@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <th:block th:replace="~{fragments/meta :: meta}"></th:block>
+  <title>Busi Pulse | 대시보드</title>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+  <th:block th:replace="~{fragments/header :: sidebar}"></th:block>
+
+
+  <div id="main-wrapper" class="min-h-screen flex flex-col">
+    <th:block th:replace="~{fragments/header :: gnb-header}"></th:block>
+
+
+    <!-- ════════════════════════════════════════════
+       MAIN CONTENT — 대시보드
+  ════════════════════════════════════════════ -->
+    <main class="flex-1 px-6 py-6 overflow-auto">
+
+      <!-- 페이지 타이틀 -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-xl font-bold text-gray-900">종합 대시보드</h1>
+          <p class="text-sm text-gray-400 mt-0.5">2026년 3월 20일 (금) · 마지막 업데이트 10분 전</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            class="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:border-brand/40 hover:text-brand hover:bg-brand-50 transition-colors">
+            <i class="fa-solid fa-rotate-right text-xs"></i>새로고침
+          </button>
+          <button
+            class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-600 transition-colors shadow-sm">
+            <i class="fa-solid fa-plus text-xs"></i>새 프로젝트
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ── 요약 카드 4개 ── -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+
+        <!-- 카드 1: 진행 중인 프로젝트 -->
+        <div class="summary-card bg-white rounded-2xl p-5 shadow-card border border-gray-100">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: #EDE9FF;">
+              <i class="fa-solid fa-diagram-project text-brand text-lg"></i>
+            </div>
+            <span class="badge bg-green-50 text-green-600">
+              <i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>+2
+            </span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900 mb-1">12</p>
+          <p class="text-sm font-medium text-gray-700">진행 중인 프로젝트</p>
+          <p class="text-xs text-gray-400 mt-1">전월 대비 2개 증가</p>
+          <div class="mt-3 progress-bar">
+            <div class="progress-bar-fill bg-brand" style="width:72%"></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-1.5">전체 15개 중 12개 활성</p>
+        </div>
+
+        <!-- 카드 2: 내 지연 업무 -->
+        <div class="summary-card bg-white rounded-2xl p-5 shadow-card border border-gray-100">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: #FFF1F0;">
+              <i class="fa-solid fa-circle-exclamation text-red-500 text-lg"></i>
+            </div>
+            <span class="badge bg-red-50 text-red-500">주의</span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900 mb-1">4</p>
+          <p class="text-sm font-medium text-gray-700">내 지연 업무</p>
+          <p class="text-xs text-gray-400 mt-1">즉시 처리가 필요한 항목</p>
+          <div class="mt-3 flex gap-1.5">
+            <span class="badge bg-red-50 text-red-500">긴급 2</span>
+            <span class="badge bg-amber-50 text-amber-600">주의 2</span>
+          </div>
+        </div>
+
+        <!-- 카드 3: 이번 달 완료 업무 -->
+        <div class="summary-card bg-white rounded-2xl p-5 shadow-card border border-gray-100">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: #ECFDF5;">
+              <i class="fa-solid fa-circle-check text-green-500 text-lg"></i>
+            </div>
+            <span class="badge bg-green-50 text-green-600">
+              <i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>+18%
+            </span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900 mb-1">47</p>
+          <p class="text-sm font-medium text-gray-700">이번 달 완료 업무</p>
+          <p class="text-xs text-gray-400 mt-1">3월 1일 ~ 오늘 기준</p>
+          <div class="mt-3 progress-bar">
+            <div class="progress-bar-fill bg-green-500" style="width:81%"></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-1.5">목표 달성률 81%</p>
+        </div>
+
+        <!-- 카드 4: 팀 평균 진척도 -->
+        <div class="summary-card bg-white rounded-2xl p-5 shadow-card border border-gray-100">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: #FFF8EC;">
+              <i class="fa-solid fa-users text-amber-500 text-lg"></i>
+            </div>
+            <span class="badge bg-amber-50 text-amber-600">팀 현황</span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900 mb-1">68<span class="text-lg font-semibold text-gray-400">%</span>
+          </p>
+          <p class="text-sm font-medium text-gray-700">팀 평균 진척도</p>
+          <p class="text-xs text-gray-400 mt-1">8개 팀 · 42명 구성원</p>
+          <div class="mt-3 progress-bar">
+            <div class="progress-bar-fill bg-amber-400" style="width:68%"></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-1.5">목표 75% 대비 -7%p</p>
+        </div>
+
+      </div>
+
+
+      <!-- ── 하단 2열 레이아웃 ── -->
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+        <!-- ── 최근 진척도 업데이트 테이블 ── -->
+        <div class="xl:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-brand text-sm"></i>
+              <h2 class="font-semibold text-gray-800 text-sm">최근 진척도 업데이트</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <select
+                class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/30">
+                <option>전체 프로젝트</option>
+                <option>내 프로젝트</option>
+              </select>
+              <a href="#" class="text-xs text-brand font-medium hover:underline whitespace-nowrap">전체 보기</a>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50/70">
+                  <th class="text-left text-xs text-gray-400 font-semibold uppercase tracking-wider px-5 py-3">프로젝트명
+                  </th>
+                  <th class="text-left text-xs text-gray-400 font-semibold uppercase tracking-wider px-4 py-3">담당 PM
+                  </th>
+                  <th class="text-left text-xs text-gray-400 font-semibold uppercase tracking-wider px-4 py-3">진척도</th>
+                  <th class="text-left text-xs text-gray-400 font-semibold uppercase tracking-wider px-4 py-3">마감일</th>
+                  <th class="text-left text-xs text-gray-400 font-semibold uppercase tracking-wider px-4 py-3">상태</th>
+                  <th class="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+
+                <tr>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-2 h-2 rounded-full bg-brand flex-shrink-0"></div>
+                      <div>
+                        <p class="font-medium text-gray-800 whitespace-nowrap">ERP 고도화 프로젝트</p>
+                        <p class="text-xs text-gray-400">개발 · 8개 업무</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-2">
+                      <div
+                        class="w-6 h-6 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-xs font-bold">
+                        김</div>
+                      <span class="text-gray-600 whitespace-nowrap">김지훈</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 min-w-[140px]">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 progress-bar">
+                        <div class="progress-bar-fill bg-brand" style="width:78%"></div>
+                      </div>
+                      <span class="text-xs font-semibold text-gray-700 w-8 text-right">78%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-gray-500 whitespace-nowrap">2026-03-23</td>
+                  <td class="px-4 py-3.5">
+                    <span class="badge bg-amber-50 text-amber-600">진행중</span>
+                  </td>
+                  <td class="px-4 py-3.5 text-right">
+                    <button class="text-gray-400 hover:text-brand transition-colors text-xs"><i
+                        class="fa-solid fa-ellipsis"></i></button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+                      <div>
+                        <p class="font-medium text-gray-800 whitespace-nowrap">모바일 앱 UX 개선</p>
+                        <p class="text-xs text-gray-400">디자인 · 12개 업무</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-2">
+                      <div
+                        class="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
+                        박</div>
+                      <span class="text-gray-600 whitespace-nowrap">박서연</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 min-w-[140px]">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 progress-bar">
+                        <div class="progress-bar-fill bg-green-500" style="width:95%"></div>
+                      </div>
+                      <span class="text-xs font-semibold text-gray-700 w-8 text-right">95%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-gray-500 whitespace-nowrap">2026-03-18</td>
+                  <td class="px-4 py-3.5">
+                    <span class="badge bg-green-50 text-green-600">완료 임박</span>
+                  </td>
+                  <td class="px-4 py-3.5 text-right">
+                    <button class="text-gray-400 hover:text-brand transition-colors text-xs"><i
+                        class="fa-solid fa-ellipsis"></i></button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+                      <div>
+                        <p class="font-medium text-gray-800 whitespace-nowrap">데이터 플랫폼 구축</p>
+                        <p class="text-xs text-gray-400">인프라 · 6개 업무</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-2">
+                      <div
+                        class="w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">
+                        이</div>
+                      <span class="text-gray-600 whitespace-nowrap">이민준</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 min-w-[140px]">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 progress-bar">
+                        <div class="progress-bar-fill bg-red-400" style="width:35%"></div>
+                      </div>
+                      <span class="text-xs font-semibold text-gray-700 w-8 text-right">35%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-red-500 font-medium whitespace-nowrap">2026-03-15</td>
+                  <td class="px-4 py-3.5">
+                    <span class="badge bg-red-50 text-red-500">지연</span>
+                  </td>
+                  <td class="px-4 py-3.5 text-right">
+                    <button class="text-gray-400 hover:text-brand transition-colors text-xs"><i
+                        class="fa-solid fa-ellipsis"></i></button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-2 h-2 rounded-full bg-brand flex-shrink-0"></div>
+                      <div>
+                        <p class="font-medium text-gray-800 whitespace-nowrap">사내 포털 리뉴얼</p>
+                        <p class="text-xs text-gray-400">프론트엔드 · 9개 업무</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-2">
+                      <div
+                        class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                        최</div>
+                      <span class="text-gray-600 whitespace-nowrap">최예린</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 min-w-[140px]">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 progress-bar">
+                        <div class="progress-bar-fill bg-brand" style="width:55%"></div>
+                      </div>
+                      <span class="text-xs font-semibold text-gray-700 w-8 text-right">55%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-gray-500 whitespace-nowrap">2026-04-10</td>
+                  <td class="px-4 py-3.5">
+                    <span class="badge bg-amber-50 text-amber-600">진행중</span>
+                  </td>
+                  <td class="px-4 py-3.5 text-right">
+                    <button class="text-gray-400 hover:text-brand transition-colors text-xs"><i
+                        class="fa-solid fa-ellipsis"></i></button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0"></div>
+                      <div>
+                        <p class="font-medium text-gray-800 whitespace-nowrap">AI 챗봇 도입 PoC</p>
+                        <p class="text-xs text-gray-400">AI/ML · 4개 업무</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5">
+                    <div class="flex items-center gap-2">
+                      <div
+                        class="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold">
+                        정</div>
+                      <span class="text-gray-600 whitespace-nowrap">정태우</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 min-w-[140px]">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 progress-bar">
+                        <div class="progress-bar-fill bg-gray-300" style="width:10%"></div>
+                      </div>
+                      <span class="text-xs font-semibold text-gray-700 w-8 text-right">10%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-gray-500 whitespace-nowrap">2026-05-30</td>
+                  <td class="px-4 py-3.5">
+                    <span class="badge bg-gray-100 text-gray-500">대기중</span>
+                  </td>
+                  <td class="px-4 py-3.5 text-right">
+                    <button class="text-gray-400 hover:text-brand transition-colors text-xs"><i
+                        class="fa-solid fa-ellipsis"></i></button>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+        <!-- ── 오른쪽 사이드 패널 ── -->
+        <div class="flex flex-col gap-5">
+
+          <!-- 내 오늘 업무 -->
+          <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-brand text-sm"></i>
+                <h2 class="font-semibold text-gray-800 text-sm">오늘 내 업무</h2>
+              </div>
+              <span class="badge bg-brand-50 text-brand">5개</span>
+            </div>
+            <div class="px-5 py-3 space-y-3">
+
+              <div class="flex items-start gap-3 group">
+                <button
+                  class="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 group-hover:border-brand flex-shrink-0 transition-colors flex items-center justify-center">
+                  <i
+                    class="fa-solid fa-check text-[8px] text-transparent group-hover:text-brand/40 transition-colors"></i>
+                </button>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-gray-700 font-medium leading-snug">ERP API 명세서 검토</p>
+                  <p class="text-xs text-gray-400 mt-0.5">ERP 고도화 · 오후 3시까지</p>
+                </div>
+                <span class="badge bg-red-50 text-red-500 flex-shrink-0">긴급</span>
+              </div>
+
+              <div class="flex items-start gap-3 group">
+                <button
+                  class="mt-0.5 w-4 h-4 rounded border-2 border-brand bg-brand flex-shrink-0 flex items-center justify-center">
+                  <i class="fa-solid fa-check text-[8px] text-white"></i>
+                </button>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-gray-400 line-through leading-snug">주간 진척 보고서 작성</p>
+                  <p class="text-xs text-gray-300 mt-0.5">완료됨</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3 group">
+                <button
+                  class="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 group-hover:border-brand flex-shrink-0 transition-colors flex items-center justify-center">
+                  <i
+                    class="fa-solid fa-check text-[8px] text-transparent group-hover:text-brand/40 transition-colors"></i>
+                </button>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-gray-700 font-medium leading-snug">팀 스프린트 회의 참석</p>
+                  <p class="text-xs text-gray-400 mt-0.5">오후 4시 · 회의실 B</p>
+                </div>
+                <span class="badge bg-blue-50 text-blue-500 flex-shrink-0">회의</span>
+              </div>
+
+              <div class="flex items-start gap-3 group">
+                <button
+                  class="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 group-hover:border-brand flex-shrink-0 transition-colors flex items-center justify-center">
+                  <i
+                    class="fa-solid fa-check text-[8px] text-transparent group-hover:text-brand/40 transition-colors"></i>
+                </button>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-gray-700 font-medium leading-snug">데이터 모델 설계 검토</p>
+                  <p class="text-xs text-gray-400 mt-0.5">데이터 플랫폼 · 오늘</p>
+                </div>
+                <span class="badge bg-amber-50 text-amber-600 flex-shrink-0">지연</span>
+              </div>
+
+              <div class="flex items-start gap-3 group">
+                <button
+                  class="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 group-hover:border-brand flex-shrink-0 transition-colors flex items-center justify-center">
+                  <i
+                    class="fa-solid fa-check text-[8px] text-transparent group-hover:text-brand/40 transition-colors"></i>
+                </button>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-gray-700 font-medium leading-snug">포털 UI 컴포넌트 구현</p>
+                  <p class="text-xs text-gray-400 mt-0.5">사내 포털 리뉴얼</p>
+                </div>
+              </div>
+
+            </div>
+            <div class="px-5 pb-4">
+              <button
+                class="w-full mt-1 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 hover:border-brand/40 hover:text-brand hover:bg-brand-50 transition-colors flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus text-[10px]"></i>업무 추가
+              </button>
+            </div>
+          </div>
+
+          <!-- 최근 공지 -->
+          <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bullhorn text-brand text-sm"></i>
+                <h2 class="font-semibold text-gray-800 text-sm">최근 공지</h2>
+              </div>
+              <a href="#" class="text-xs text-brand font-medium hover:underline">더보기</a>
+            </div>
+            <div class="px-5 py-3 space-y-3.5">
+
+              <div class="flex gap-3 cursor-pointer group">
+                <div class="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-memo text-brand text-xs"></i>
+                </div>
+                <div class="min-w-0">
+                  <p
+                    class="text-sm text-gray-700 font-medium leading-snug group-hover:text-brand transition-colors line-clamp-1">
+                    2026년 1분기 성과 리뷰 일정 안내</p>
+                  <p class="text-xs text-gray-400 mt-0.5">2026.03.18 · 전사 공지</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 cursor-pointer group">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs"></i>
+                </div>
+                <div class="min-w-0">
+                  <p
+                    class="text-sm text-gray-700 font-medium leading-snug group-hover:text-brand transition-colors line-clamp-1">
+                    보안 패치 적용 안내 (3/22 오전 2시)</p>
+                  <p class="text-xs text-gray-400 mt-0.5">2026.03.17 · IT 인프라팀</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 cursor-pointer group">
+                <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-calendar-check text-green-500 text-xs"></i>
+                </div>
+                <div class="min-w-0">
+                  <p
+                    class="text-sm text-gray-700 font-medium leading-snug group-hover:text-brand transition-colors line-clamp-1">
+                    4월 전사 워크샵 참가 신청</p>
+                  <p class="text-xs text-gray-400 mt-0.5">2026.03.15 · 경영지원팀</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+
+  <!-- ── 오버레이 (드롭다운 닫기용) ── -->
+  <div id="overlay" class="fixed inset-0 z-20" style="display:none;" onclick="closeAllPanels()"></div>
+
+
+  <!-- 공통 JS -->
+  <script th:src="@{/js/common.js}"></script>
+
+  <!-- 페이지 전용 JS -->
+  <script>
+    /* ── 업무 체크박스 토글 ── */
+    document.querySelectorAll('.flex.items-start.gap-3.group').forEach(item => {
+      const btn = item.querySelector('button');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const isChecked = btn.classList.contains('bg-brand');
+        const textEl = item.querySelector('p.text-sm');
+        const subEl = item.querySelector('p.text-xs');
+        if (isChecked) {
+          btn.classList.remove('bg-brand', 'border-brand');
+          btn.classList.add('border-gray-300');
+          btn.querySelector('i').classList.remove('text-white');
+          btn.querySelector('i').classList.add('text-transparent');
+          if (textEl) { textEl.classList.remove('text-gray-400', 'line-through'); textEl.classList.add('text-gray-700', 'font-medium'); }
+          if (subEl) { subEl.classList.remove('text-gray-300'); subEl.classList.add('text-gray-400'); subEl.textContent = ''; }
+        } else {
+          btn.classList.add('bg-brand', 'border-brand');
+          btn.classList.remove('border-gray-300');
+          btn.querySelector('i').classList.add('text-white');
+          btn.querySelector('i').classList.remove('text-transparent');
+          if (textEl) { textEl.classList.add('text-gray-400', 'line-through'); textEl.classList.remove('text-gray-700', 'font-medium'); }
+          if (subEl) { subEl.classList.add('text-gray-300'); subEl.classList.remove('text-gray-400'); subEl.textContent = '완료됨'; }
+        }
+      });
+    });
+  </script>
+
+</body>
+
+</html>
