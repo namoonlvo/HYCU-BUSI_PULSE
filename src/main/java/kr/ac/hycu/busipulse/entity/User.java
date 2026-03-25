@@ -1,8 +1,8 @@
 package kr.ac.hycu.busipulse.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.Date;
 import java.util.UUID;
 
 @Entity
@@ -30,7 +30,7 @@ public class User {
     private String phone;
 
     @Column(name = "hire_date")
-    private Date hireDate;
+    private LocalDate hireDate;
 
     @Column(name = "dept_id")
     private Long deptId;
@@ -65,7 +65,7 @@ public class User {
     public String getUserName()     { return userName; }
     public String getEmail()        { return email; }
     public String getPhone()        { return phone; }
-    public Date getHireDate()       { return hireDate; }
+    public LocalDate getHireDate()  { return hireDate; }
     public Long getDeptId()         { return deptId; }
     public Long getRoleCode()       { return roleCode; }
     public String getPosition()     { return position; }

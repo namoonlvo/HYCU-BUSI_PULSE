@@ -1,4 +1,5 @@
 HELP.md
+.mcp.json
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -43,3 +44,11 @@ out/
 src/main/resources/application-secret.yml
 *.env
 .env
+
+### Claude / Agent ###
+.claude/
+.agents/
+skills-lock.json
+
+### Local Gradle Config ###
+gradle.properties
