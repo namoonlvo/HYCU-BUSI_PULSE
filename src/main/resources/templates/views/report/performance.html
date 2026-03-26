@@ -94,7 +94,6 @@
     </main>
   </div>
   <div id="overlay" class="fixed inset-0 bg-black/20 z-20 hidden" onclick="closeAllPanels()"></div>
-  <script th:src="@{/js/common.js}"></script>
   <script>
     let charts={};
     function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}

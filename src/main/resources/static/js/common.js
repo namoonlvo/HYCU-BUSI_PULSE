@@ -88,26 +88,42 @@ document.addEventListener('DOMContentLoaded', function () {
     pageEl.textContent   = entry[1];
   }
 
-  // 사이드바 현재 페이지 메뉴 자동 오픈
+  // 사이드바 현재 페이지 메뉴 자동 오픈 + 활성 링크 강조
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
-  // 모든 서브메뉴 닫기
+  // 모든 서브메뉴 닫기, 모든 링크 활성 초기화
   sidebar.querySelectorAll('.has-submenu').forEach(el => {
     el.classList.remove('open');
     const sm = el.querySelector('.submenu');
     if (sm) sm.classList.remove('open');
+    const ni = el.querySelector('.nav-item');
+    if (ni) ni.classList.remove('active');
+  });
+  sidebar.querySelectorAll('a[href]').forEach(a => {
+    a.style.color = '';
+    a.style.background = '';
+    a.style.fontWeight = '';
   });
 
-  // 현재 URL과 일치하는 링크의 부모 서브메뉴 열기
+  // 현재 URL과 일치하는 링크의 부모 서브메뉴 열기 + 링크 강조
   const activeLink = Array.from(sidebar.querySelectorAll('a[href]'))
     .find(a => a.getAttribute('href') === path);
   if (activeLink) {
+    // 링크 활성화 스타일
+    activeLink.style.color = '#fff';
+    activeLink.style.background = 'rgba(255,255,255,0.14)';
+    activeLink.style.fontWeight = '600';
+
+    // 부모 서브메뉴 열기
     const parentMenu = activeLink.closest('.has-submenu');
     if (parentMenu) {
       parentMenu.classList.add('open');
       const sm = parentMenu.querySelector('.submenu');
       if (sm) sm.classList.add('open');
+      // 부모 nav-item 활성화
+      const ni = parentMenu.querySelector('.nav-item');
+      if (ni) ni.classList.add('active');
     }
   }
 });
