@@ -88,13 +88,4 @@ public class MainController {
         return "views/board/meeting";
     }
 
-    @GetMapping("/admin/user_manage")
-    public String adminUserManage() {
-        return "views/admin/user_manage";
-    }
-
-    @GetMapping("/admin/code_manage")
-    public String adminCodeManage() {
-        return "views/admin/code_manage";
-    }
 }

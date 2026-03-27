@@ -71,4 +71,20 @@ public class User {
     public String getPosition()     { return position; }
     public String getStatus()       { return status; }
     public String getUseYn()        { return useYn; }
+    public UUID getRgid()           { return rgid; }
+    public OffsetDateTime getRgdt() { return rgdt; }
+
+    public void setLoginId(String loginId)              { this.loginId = loginId; }
+    public void setPasswordHash(String passwordHash)    { this.passwordHash = passwordHash; }
+    public void setUserName(String userName)            { this.userName = userName; }
+    public void setEmail(String email)                  { this.email = email; }
+    public void setPhone(String phone)                  { this.phone = phone; }
+    public void setHireDate(LocalDate hireDate)         { this.hireDate = hireDate; }
+    public void setDeptId(Long deptId)                  { this.deptId = deptId; }
+    public void setRoleCode(Long roleCode)              { this.roleCode = roleCode; }
+    public void setPosition(String position)            { this.position = position; }
+    public void setStatus(String status)                { this.status = status; }
+    public void setUseYn(String useYn)                  { this.useYn = useYn; }
+    public void setRgid(UUID rgid)                      { this.rgid = rgid; }
+    public void setRgdt(OffsetDateTime rgdt)            { this.rgdt = rgdt; }
 }
