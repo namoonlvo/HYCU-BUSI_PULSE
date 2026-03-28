@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface CommonCodeRepository extends JpaRepository<CommonCode, Long> {
 
-    List<CommonCode> findByLcodeAndUseYnOrderBySortOrd(String lcode, String useYn);
+    List<CommonCode> findByLcodeAndUseYnOrderBySortOrder(String lcode, String useYn);
 }

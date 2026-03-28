@@ -37,7 +37,7 @@ public class AdminController {
     @GetMapping("/user_manage")
     public String userManage(Model model) {
         model.addAttribute("departments", departmentRepository.findByUseYnOrderByDeptName("Y"));
-        model.addAttribute("roleCodes", commonCodeRepository.findByLcodeAndUseYnOrderBySortOrd("05", "Y"));
+        model.addAttribute("roleCodes", commonCodeRepository.findByLcodeAndUseYnOrderBySortOrder("05", "Y"));
         return "views/admin/user_manage";
     }
 

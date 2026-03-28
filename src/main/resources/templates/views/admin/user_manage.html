@@ -124,7 +124,7 @@
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">역할</label>
             <select id="uRole" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-purple-400">
               <option value="">선택 안함</option>
-              <option th:each="r : ${roleCodes}" th:value="${r.codeId}" th:text="${r.codeName}"></option>
+              <option th:each="r : ${roleCodes}" th:value="${r.scode}" th:text="${r.codeName}"></option>
             </select>
           </div>
           <div>
